@@ -147,21 +147,20 @@
 		{/each}
 	</div>
 
-	<aside class="resources">
+	<aside class="resources" style:height="{canvasHeight}px">
 		{#each rowLayouts as row (row.resource.id)}
 			<div class="resource-row" style:height="{row.height}px">{row.resource.name}</div>
 		{/each}
 	</aside>
 
-	<div class="canvas-wrap">
-		<div class="canvas" style:width="{canvasWidth}px" style:height="{canvasHeight}px">
-			{#each rowLayouts as row (row.resource.id)}
-				<div class="grid-row" style:top="{row.rowTop}px" style:height="{row.height}px">
-					{#each columns as _col, ci (ci)}
-						<div class="grid-cell" style:left="{ci * zoom.colWidth}px" style:width="{zoom.colWidth}px"></div>
-					{/each}
-				</div>
-			{/each}
+	<div class="canvas" style:width="{canvasWidth}px" style:height="{canvasHeight}px">
+		{#each rowLayouts as row (row.resource.id)}
+			<div class="grid-row" style:top="{row.rowTop}px" style:height="{row.height}px">
+				{#each columns as _col, ci (ci)}
+					<div class="grid-cell" style:left="{ci * zoom.colWidth}px" style:width="{zoom.colWidth}px"></div>
+				{/each}
+			</div>
+		{/each}
 
 			{#each layouts as layout (layout.assignment.id)}
 				<Bar
@@ -243,7 +242,6 @@
 					}}
 				/>
 			{/each}
-		</div>
 	</div>
 
 	<div id={statusId} role="status" aria-live="polite" class="sr-only">{statusMessage}</div>
@@ -263,19 +261,26 @@
 	}
 	.timeline {
 		display: grid;
-		grid-template-columns: var(--ui-resource-col-width) 1fr;
-		grid-template-rows: auto 1fr;
+		grid-template-columns: var(--ui-resource-col-width) auto;
+		grid-template-rows: auto auto;
 		font-family: var(--ui-font, system-ui, sans-serif);
 		color: var(--ui-fg, #1a1a1a);
 		background: var(--ui-bg, #ffffff);
 		border: 1px solid var(--ui-border, #e5e5e5);
 		border-radius: var(--ui-radius, 6px);
-		overflow: hidden;
+		overflow: auto;
+		max-height: 100%;
+		/* iOS Safari momentum scroll での sticky 安定化 */
+		-webkit-overflow-scrolling: touch;
 	}
 
 	.corner {
 		grid-row: 1;
 		grid-column: 1;
+		position: sticky;
+		top: 0;
+		left: 0;
+		z-index: 3;
 		border-right: 1px solid var(--ui-border, #e5e5e5);
 		border-bottom: 1px solid var(--ui-border, #e5e5e5);
 		background: var(--ui-header-bg, #f7f7f8);
@@ -284,6 +289,9 @@
 	.headers {
 		grid-row: 1;
 		grid-column: 2;
+		position: sticky;
+		top: 0;
+		z-index: 2;
 		background: var(--ui-header-bg, #f7f7f8);
 		border-bottom: 1px solid var(--ui-border, #e5e5e5);
 	}
@@ -311,6 +319,9 @@
 	.resources {
 		grid-row: 2;
 		grid-column: 1;
+		position: sticky;
+		left: 0;
+		z-index: 2;
 		display: flex;
 		flex-direction: column;
 		border-right: 1px solid var(--ui-border, #e5e5e5);
@@ -327,14 +338,9 @@
 		box-sizing: border-box;
 	}
 
-	.canvas-wrap {
+	.canvas {
 		grid-row: 2;
 		grid-column: 2;
-		overflow-x: auto;
-		overflow-y: hidden;
-	}
-
-	.canvas {
 		position: relative;
 	}
 
