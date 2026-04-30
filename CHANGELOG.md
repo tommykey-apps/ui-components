@@ -1,5 +1,72 @@
 # @tommykey-apps/ui-components
 
+## 0.2.0
+
+### Minor Changes
+
+- a524955: 二段ヘッダで連続する同一値を col-span でグルーピング。
+
+  DayZoom の上段で "2026/05" が 14 回繰り返されていた状態を 1 セル(14col span)に統合。
+  WeekZoom 上段は月ごと、MonthZoom 上段は年ごとにグループ化される。
+
+  実装: `groupHeaderCells()` でランレングス計算 → `$derived` で `headerTiers` に展開 → `.header-cell` に `width = span * colWidth` を流す。CSS には変更なし。
+
+- 64c38b4: キーボード操作と aria-live ステータス対応。
+
+  **Bar 操作:**
+
+  - `Tab` で Bar 間 focus(既存)
+  - `←/→` で 1 unit 平行移動(`Shift+←/→` で 5 unit)
+  - `Alt+←` で開始日リサイズ(縮小)、`Alt+→` で終了日リサイズ(拡大)
+  - `Shift+↑/↓` で resource 行移動(行跨ぎ)
+
+  **スクリーンリーダー対応:**
+
+  - ResourceTimeline に `role="status"` + `aria-live="polite"` の sr-only 領域を追加
+  - onMove / onResize / onKeyMove / onKeyResize 完了時に「移動 / 開始日変更 / 終了日変更 田中 太郎: A 社案件 2026-05-04 〜 2026-05-15」のようなメッセージで状態通知
+  - Bar に `aria-describedby={statusId}` を付与して紐付け
+
+  新規 props (Bar):
+
+  - `ariaDescribedBy` — 親が status region の id を渡す
+  - `onKeyMove(units, rows)` — 矢印キーでの移動
+  - `onKeyResize(edge, units)` — Alt+矢印での edge resize
+
+- 2613063: 同一リソース内で時間が重複する Assignment を **縦に積む(vertical stacking)** ようになった。
+
+  実装:
+
+  - `projection.ts` に **`allocateLanes`** 関数を追加(Greedy First-Fit / interval graph coloring)
+  - `ResourceTimeline.svelte` の各行高さが lane 数に応じて動的に拡張
+  - Bar の y 座標が `row.rowTop + laneIndex * (barHeight + laneGap)` に
+  - 行跨ぎ drag 判定を等高ロジックから `rowLayouts` 検索に変更(動的高さで正しく判定)
+
+  新規 props:
+
+  - `barHeight` (default 32): 各バーの高さ
+  - `laneGap` (default 4): lane 間 gap
+
+  既存の `rowHeight` は「単一 lane 行の最低高さ」として継続利用。
+
+### Patch Changes
+
+- dc51afc: `Assignment` の `startDate` / `endDate` に「ローカル深夜 Date 推奨」JSDoc を追加。Storybook fixtures を local-midnight 形式 (`new Date(yyyy, m-1, d)`) に変換。
+
+  UTC 文字列 (`new Date('2026-05-04T00:00:00Z')`) を渡すと非 UTC 環境(JST 等)で `barRect` の aligned 判定が外れて末端列が +1 col 余計に太く描画される挙動の補足ドキュメント。
+
+- 4f66f46: projection.ts の単体テストを追加(19 ケース、Vitest 4.1)。
+
+  - `vite.config.ts` の `test.projects` を `unit`(node 環境) + `storybook`(browser) に分離
+  - coverage 対象を `src/lib/**/*.ts` に絞る(stories / .svelte / dist 除外)
+  - scripts: `pnpm test` (unit のみ) / `pnpm test:all` (全 project) / `pnpm test:coverage`
+  - CI workflow に `pnpm test` を `pnpm check` の直後に追加
+
+  テストカバー範囲:
+
+  - `startOfUnit` / `addUnits` / `unitsBetween` / `dateToX` / `xToDate` / `snapDate` / `viewportColumns`
+  - `barRect` の境界条件(aligned / not aligned / zero-length)
+  - `allocateLanes` の lane 割当(non-overlap / 2-lane / 3-lane / lane reuse / empty)
+
 ## 0.1.1
 
 ### Patch Changes
