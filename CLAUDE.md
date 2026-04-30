@@ -67,3 +67,12 @@ CI: `secrets.GITHUB_TOKEN` をそのまま使う。
 - **時間処理: date-fns v4** (Temporal は Node ネイティブ未対応のため見送り)
 - **コンポーネント API: URL/routing 非依存**
   filterStart や zoom は props (`$bindable`) として受け取る。URL同期は消費アプリ側の責務。
+- **日付の渡し方**: 必ず **local-midnight Date** で渡す。`new Date(2026, 4, 4)` のように数値引数で。
+  `new Date('YYYY-MM-DDT00:00:00Z')` 形式は UTC 固定 = 非UTC環境(JST等)で時刻ズレし、`barRect` の aligned 判定が外れて末端列に +1 col 余計な太さが出る。
+
+## Phase 2 進行中の改善 (post-0.1.x)
+
+- 二段ヘッダで連続する同一値を col-span でグルーピング(年表示の繰り返し回避)
+- 同行内 Assignment の vertical stacking(時間重複時に縦に積む、行高さ動的)
+- Vitest による projection 単体テスト
+- キーボード(矢印キーで move/resize)+ aria-live status 対応
