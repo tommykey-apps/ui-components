@@ -10,6 +10,7 @@ import {
 	startOfUnit,
 	unitsBetween,
 	viewportColumns,
+	weekOfMonth,
 	xToDate
 } from './projection.js';
 import { ZOOMS } from './zoom.js';
@@ -207,5 +208,33 @@ describe('allocateLanes', () => {
 		const result = allocateLanes([]);
 		expect(result.laneCount).toBe(0);
 		expect(result.lanes.size).toBe(0);
+	});
+});
+
+describe('weekOfMonth', () => {
+	it('first Monday of May 2026 → W1', () => {
+		expect(weekOfMonth(new Date(2026, 4, 4))).toBe(1);
+	});
+
+	it('mid May → W2/W3/W4', () => {
+		expect(weekOfMonth(new Date(2026, 4, 11))).toBe(2);
+		expect(weekOfMonth(new Date(2026, 4, 18))).toBe(3);
+		expect(weekOfMonth(new Date(2026, 4, 25))).toBe(4);
+	});
+
+	it('boundary week (Apr 27 - May 3) belongs to April → April W4', () => {
+		expect(weekOfMonth(new Date(2026, 3, 27))).toBe(4);
+	});
+
+	it('week start on month-1st-Monday → W1 (Jun 1 2026 is Monday)', () => {
+		expect(weekOfMonth(new Date(2026, 5, 1))).toBe(1);
+	});
+
+	it('5-week month last week → W5 (Mon Jun 29 2026)', () => {
+		expect(weekOfMonth(new Date(2026, 5, 29))).toBe(5);
+	});
+
+	it('mid-week date returns same as its Monday (Wed May 6 → W1)', () => {
+		expect(weekOfMonth(new Date(2026, 4, 6))).toBe(1);
 	});
 });

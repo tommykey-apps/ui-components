@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { format } from 'date-fns';
 	import Bar from './Bar.svelte';
-	import type { Assignment, Resource, ZoomLevel } from './types.js';
+	import type { Assignment, HeaderTier, Resource, ZoomLevel } from './types.js';
 	import {
 		addUnits,
 		allocateLanes,
@@ -92,9 +92,10 @@
 
 	type HeaderGroup = { value: string; span: number; startIdx: number };
 
-	function groupHeaderCells(cells: Date[], fmt: string): HeaderGroup[] {
+	function groupHeaderCells(cells: Date[], tier: HeaderTier): HeaderGroup[] {
+		const fn = tier.format ?? ((d: Date) => format(d, tier.fmt ?? ''));
 		return cells.reduce<HeaderGroup[]>((acc, col, i) => {
-			const value = format(col, fmt);
+			const value = fn(col);
 			const last = acc[acc.length - 1];
 			if (last && last.value === value) {
 				last.span += 1;
@@ -108,7 +109,7 @@
 	let headerTiers = $derived(
 		zoom.headers.map((tier) => ({
 			tier,
-			groups: groupHeaderCells(columns, tier.fmt)
+			groups: groupHeaderCells(columns, tier)
 		}))
 	);
 

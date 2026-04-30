@@ -1,4 +1,5 @@
 import type { ZoomLevel } from './types.js';
+import { weekOfMonth } from './projection.js';
 
 export const ZOOMS: Record<'day' | 'week' | 'month' | 'year', ZoomLevel> = {
 	day: {
@@ -20,7 +21,7 @@ export const ZOOMS: Record<'day' | 'week' | 'month' | 'year', ZoomLevel> = {
 		snapUnit: 'day',
 		headers: [
 			{ unit: 'month', fmt: 'yyyy/MM' },
-			{ unit: 'week', fmt: "'W'w" }
+			{ unit: 'week', format: (d) => `W${weekOfMonth(d)}` }
 		]
 	},
 	month: {

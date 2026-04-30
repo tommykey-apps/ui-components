@@ -26,7 +26,10 @@ export type SnapUnit = 'day' | 'week' | 'month';
 
 export type HeaderTier = {
 	unit: ZoomUnit;
-	fmt: string;
+	/** date-fns format string。`format` が指定されていない場合に使用 */
+	fmt?: string;
+	/** カスタムフォーマッタ。指定されていれば `fmt` より優先 */
+	format?: (date: Date) => string;
 };
 
 export type ZoomLevel = {

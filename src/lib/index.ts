@@ -12,6 +12,7 @@ export {
 	startOfUnit,
 	unitsBetween,
 	viewportColumns,
+	weekOfMonth,
 	xToDate
 } from './timeline/projection.js';
 export type {

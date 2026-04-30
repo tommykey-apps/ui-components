@@ -114,6 +114,27 @@ export function viewportColumns(viewportStart: Date, count: number, unit: ZoomUn
 }
 
 /**
+ * 週の月曜日が属する月の何週目か(1-origin)。
+ *
+ * 慣例 A: 月境界をまたぐ週は「月曜日のある月」に帰属する。
+ *   例: 2026-05-04 (Mon) → May W1
+ *       2026-04-27 (Mon, 翌週は May 3 まで) → April W4
+ *       2026-06-01 (Mon, 月初が月曜) → June W1
+ *
+ * date-fns の `format(date, 'W')` は weekStartsOn:1 で第1週が W2 を返すバグがあるため自前実装。
+ * 参考: https://github.com/date-fns/date-fns/issues/1566
+ */
+export function weekOfMonth(date: Date): number {
+	const monday = startOfWeek(date, WEEK_OPTIONS);
+	const monthStart = startOfMonth(monday);
+	// monthStart の曜日 (0=Sun, 1=Mon, ..., 6=Sat) → 最初の月曜までのオフセット
+	const dow = monthStart.getDay();
+	const offsetToFirstMonday = dow === 1 ? 0 : (8 - dow) % 7;
+	const firstMonday = addDays(monthStart, offsetToFirstMonday);
+	return differenceInCalendarWeeks(monday, firstMonday, WEEK_OPTIONS) + 1;
+}
+
+/**
  * 同一行内 Assignment の lane index を計算する(Greedy First-Fit / interval graph coloring)。
  * 時刻順 sort → 各 lane の最終 endDate を track → 空いている最小 index lane に割り当て。
  *
