@@ -1,0 +1,46 @@
+/* Storybook preview 用 light/dark テーマ変数。
+   ライブラリ自身は色を持たないため、ここで demo 値を定義する。
+   消費アプリ(resource-planner 等)はこの差分を見て自分の app.css にブリッジする想定。 */
+
+:root {
+	--ui-bar-bg: #4f46e5;
+	--ui-bar-fg: #ffffff;
+	--ui-bar-radius: 4px;
+	--ui-bar-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+	--ui-bar-shadow-drag: 0 6px 16px rgb(0 0 0 / 0.22);
+	--ui-bar-font-size: 12px;
+	--ui-handle-width: 6px;
+	--ui-handle-hover: rgb(255 255 255 / 0.25);
+	--ui-font: system-ui, sans-serif;
+	--ui-fg: #1a1a1a;
+	--ui-bg: #ffffff;
+	--ui-border: #e5e5e5;
+	--ui-radius: 6px;
+	--ui-header-bg: #f7f7f8;
+	--ui-header-fg: #555;
+	--ui-header-font-size: 12px;
+	--ui-resource-bg: #fafafa;
+	--ui-row-font-size: 13px;
+	--ui-grid: #f2f2f3;
+}
+
+.dark {
+	--ui-bar-bg: #818cf8;
+	--ui-bar-fg: #0f172a;
+	--ui-bar-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+	--ui-bar-shadow-drag: 0 6px 16px rgb(0 0 0 / 0.55);
+	--ui-handle-hover: rgb(255 255 255 / 0.18);
+	--ui-fg: #f1f5f9;
+	--ui-bg: #0f172a;
+	--ui-border: #1e293b;
+	--ui-header-bg: #111827;
+	--ui-header-fg: #94a3b8;
+	--ui-resource-bg: #0b1220;
+	--ui-grid: #1e293b;
+}
+
+body {
+	background: var(--ui-bg);
+	color: var(--ui-fg);
+	transition: background-color 0.15s ease;
+}
