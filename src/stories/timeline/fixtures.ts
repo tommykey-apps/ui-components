@@ -59,6 +59,24 @@ export const ASSIGNMENTS: Assignment[] = [
 		endDate: d(2026, 6, 15),
 		label: 'E社 設計',
 		color: '#8b5cf6'
+	},
+	// stacking 検証: tanaka 行で a1 (5/04-5/15) と時間が重なる Assignment
+	{
+		id: 'a7',
+		resourceId: 'tanaka',
+		startDate: d(2026, 5, 6),
+		endDate: d(2026, 5, 12),
+		label: '社内 MTG',
+		color: '#a855f7'
+	},
+	// stacking 検証: 同じく suzuki 行で a3 (5/04-5/22) と重なる
+	{
+		id: 'a8',
+		resourceId: 'suzuki',
+		startDate: d(2026, 5, 13),
+		endDate: d(2026, 5, 20),
+		label: 'F社 ヒアリング',
+		color: '#ec4899'
 	}
 ];
 
