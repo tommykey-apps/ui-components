@@ -2,7 +2,14 @@
 	import { format } from 'date-fns';
 	import Bar from './Bar.svelte';
 	import type { Assignment, Resource, ZoomLevel } from './types.js';
-	import { addUnits, allocateLanes, barRect, startOfUnit, viewportColumns } from './projection.js';
+	import {
+		addUnits,
+		allocateLanes,
+		barRect,
+		maxEndCol,
+		startOfUnit,
+		viewportColumns
+	} from './projection.js';
 	import { ZOOMS } from './zoom.js';
 
 	type Props = {
@@ -18,6 +25,8 @@
 		laneGap?: number;
 		resourceColWidth?: number;
 		visibleCols?: number;
+		/** canvas 末端のスクロール余白(列数)。最遠 Assignment の endDate +α まで grid を描画する */
+		bufferCols?: number;
 		onMove?: (assignment: Assignment) => void;
 		onResize?: (assignment: Assignment) => void;
 	};
@@ -32,14 +41,19 @@
 		laneGap = 4,
 		resourceColWidth = 200,
 		visibleCols,
+		bufferCols = 7,
 		onMove,
 		onResize
 	}: Props = $props();
 
-	let cols = $derived(visibleCols ?? zoom.visibleCols);
+	let visibleColsResolved = $derived(visibleCols ?? zoom.visibleCols);
 	let origin = $derived(startOfUnit(viewportStart, zoom.unit));
-	let columns = $derived(viewportColumns(origin, cols, zoom.unit));
-	let canvasWidth = $derived(cols * zoom.colWidth);
+	// canvas 末端を assignments の最遠 endDate + buffer まで拡張(横スクロール時に grid が途切れないように)
+	let canvasCols = $derived(
+		Math.max(visibleColsResolved, maxEndCol(assignments, origin, zoom.unit) + bufferCols)
+	);
+	let columns = $derived(viewportColumns(origin, canvasCols, zoom.unit));
+	let canvasWidth = $derived(canvasCols * zoom.colWidth);
 
 	type RowLayout = {
 		resource: Resource;

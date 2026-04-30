@@ -6,6 +6,8 @@ export {
 	allocateLanes,
 	barRect,
 	dateToX,
+	endColExclusive,
+	maxEndCol,
 	snapDate,
 	startOfUnit,
 	unitsBetween,
