@@ -4,6 +4,8 @@ import {
 	allocateLanes,
 	barRect,
 	dateToX,
+	endColExclusive,
+	maxEndCol,
 	snapDate,
 	startOfUnit,
 	unitsBetween,
@@ -114,13 +116,50 @@ describe('snapDate', () => {
 	});
 });
 
-describe('allocateLanes', () => {
-	const mk = (id: string, start: Date, end: Date): Assignment => ({
-		id,
-		resourceId: 'r',
-		startDate: start,
-		endDate: end
+const mkAssignment = (id: string, start: Date, end: Date): Assignment => ({
+	id,
+	resourceId: 'r',
+	startDate: start,
+	endDate: end
+});
+
+describe('endColExclusive', () => {
+	it('aligned: returns endCol unchanged', () => {
+		expect(endColExclusive(new Date(2026, 4, 11), new Date(2026, 4, 4), 'day')).toBe(7);
 	});
+
+	it('not aligned (mid-day): returns endCol + 1', () => {
+		expect(endColExclusive(new Date(2026, 4, 11, 12), new Date(2026, 4, 4), 'day')).toBe(8);
+	});
+
+	it('week unit: aligned Monday', () => {
+		// 2026-05-04 (Mon) + 2 weeks = 2026-05-18 (Mon)
+		expect(endColExclusive(new Date(2026, 4, 18), new Date(2026, 4, 4), 'week')).toBe(2);
+	});
+});
+
+describe('maxEndCol', () => {
+	it('empty: returns 0', () => {
+		expect(maxEndCol([], new Date(2026, 4, 4), 'day')).toBe(0);
+	});
+
+	it('multiple assignments: returns furthest end col', () => {
+		const items = [
+			mkAssignment('a', new Date(2026, 4, 4), new Date(2026, 4, 8)),
+			mkAssignment('b', new Date(2026, 4, 5), new Date(2026, 4, 20)),
+			mkAssignment('c', new Date(2026, 4, 6), new Date(2026, 4, 11))
+		];
+		expect(maxEndCol(items, new Date(2026, 4, 4), 'day')).toBe(16);
+	});
+
+	it('all in past: clamped to 0', () => {
+		const items = [mkAssignment('a', new Date(2026, 3, 1), new Date(2026, 3, 8))];
+		expect(maxEndCol(items, new Date(2026, 4, 4), 'day')).toBe(0);
+	});
+});
+
+describe('allocateLanes', () => {
+	const mk = mkAssignment;
 
 	it('non-overlapping: all in lane 0', () => {
 		const a = mk('a', new Date(2026, 4, 4), new Date(2026, 4, 6));

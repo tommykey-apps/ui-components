@@ -77,12 +77,34 @@ export function snapDate(date: Date, snap: SnapUnit): Date {
 
 export type BarRect = { x: number; width: number };
 
+/**
+ * Assignment 終端の列 index (exclusive)。
+ * unit 境界に揃っていれば endCol、揃っていなければ endCol + 1(部分カラムを含めて描画)。
+ * `barRect` の span 計算と `maxEndCol` の canvas 幅計算で共通利用。
+ */
+export function endColExclusive(date: Date, origin: Date, unit: ZoomUnit): number {
+	const endCol = unitsBetween(origin, date, unit);
+	const aligned = startOfUnit(date, unit).getTime() === date.getTime();
+	return aligned ? endCol : endCol + 1;
+}
+
+/**
+ * Assignment 配列のうち最も先まで延びる終端の列 index を返す。
+ * 空配列および全 origin より前の場合は 0(canvas を縮めない)。
+ */
+export function maxEndCol(assignments: Assignment[], origin: Date, unit: ZoomUnit): number {
+	let max = 0;
+	for (const a of assignments) {
+		const c = endColExclusive(a.endDate, origin, unit);
+		if (c > max) max = c;
+	}
+	return max;
+}
+
 export function barRect(assignment: Assignment, origin: Date, zoom: ZoomLevel): BarRect {
 	const startCol = unitsBetween(origin, assignment.startDate, zoom.unit);
-	const endCol = unitsBetween(origin, assignment.endDate, zoom.unit);
-	const endAligned =
-		startOfUnit(assignment.endDate, zoom.unit).getTime() === assignment.endDate.getTime();
-	const span = Math.max(endAligned ? endCol - startCol : endCol - startCol + 1, 1);
+	const endCol = endColExclusive(assignment.endDate, origin, zoom.unit);
+	const span = Math.max(endCol - startCol, 1);
 	return { x: startCol * zoom.colWidth, width: span * zoom.colWidth };
 }
 
