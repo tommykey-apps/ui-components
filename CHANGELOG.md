@@ -1,5 +1,11 @@
 # @tommykey-apps/ui-components
 
+## 0.1.1
+
+### Patch Changes
+
+- 8fea479: Repository と GitHub Packages を public 化(Free org の Pages 制約を回避するため)。消費アプリ側は `@tommykey-apps:registry=https://npm.pkg.github.com` だけで認証なしで取得可能になる。
+
 ## 0.1.0
 
 ### Minor Changes
