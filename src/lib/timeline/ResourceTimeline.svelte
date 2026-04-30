@@ -65,6 +65,17 @@
 
 	let canvasHeight = $derived(rowLayouts.reduce((sum, r) => sum + r.height, 0));
 
+	let statusMessage = $state('');
+	const statusId = `tt-status-${Math.random().toString(36).slice(2, 9)}`;
+
+	function fmtRange(a: Assignment): string {
+		const fmt = (d: Date) =>
+			`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		const resource = resources.find((r) => r.id === a.resourceId);
+		const name = resource?.name ?? a.resourceId;
+		return `${name}: ${a.label ?? a.id} ${fmt(a.startDate)} 〜 ${fmt(a.endDate)}`;
+	}
+
 	type HeaderGroup = { value: string; span: number; startIdx: number };
 
 	function groupHeaderCells(cells: Date[], fmt: string): HeaderGroup[] {
@@ -160,6 +171,7 @@
 					width={layout.width}
 					height={layout.height}
 					minWidth={zoom.colWidth}
+					ariaDescribedBy={statusId}
 					onDragEnd={(dx, dy) => {
 						const colDelta = Math.round(dx / zoom.colWidth);
 						// 行跨ぎ判定: y + dy がどの rowLayout の範囲に入るかで決める(等高 row 前提の Math.round は不可)
@@ -169,12 +181,14 @@
 						);
 						const newResourceId = newRow?.resource.id ?? layout.assignment.resourceId;
 						if (colDelta === 0 && newResourceId === layout.assignment.resourceId) return;
-						onMove?.({
+						const updated: Assignment = {
 							...layout.assignment,
 							resourceId: newResourceId,
 							startDate: addUnits(layout.assignment.startDate, colDelta, zoom.unit),
 							endDate: addUnits(layout.assignment.endDate, colDelta, zoom.unit)
-						});
+						};
+						statusMessage = `移動 ${fmtRange(updated)}`;
+						onMove?.(updated);
 					}}
 					onResizeEnd={(edge, dx) => {
 						const colDelta = Math.round(dx / zoom.colWidth);
@@ -182,20 +196,71 @@
 						if (edge === 'start') {
 							const newStart = addUnits(layout.assignment.startDate, colDelta, zoom.unit);
 							if (newStart >= layout.assignment.endDate) return;
-							onResize?.({ ...layout.assignment, startDate: newStart });
+							const updated = { ...layout.assignment, startDate: newStart };
+							statusMessage = `開始日変更 ${fmtRange(updated)}`;
+							onResize?.(updated);
 						} else {
 							const newEnd = addUnits(layout.assignment.endDate, colDelta, zoom.unit);
 							if (newEnd <= layout.assignment.startDate) return;
-							onResize?.({ ...layout.assignment, endDate: newEnd });
+							const updated = { ...layout.assignment, endDate: newEnd };
+							statusMessage = `終了日変更 ${fmtRange(updated)}`;
+							onResize?.(updated);
+						}
+					}}
+					onKeyMove={(units, rows) => {
+						const currentRowIndex = resources.findIndex(
+							(r) => r.id === layout.assignment.resourceId
+						);
+						const newRowIndex = Math.max(
+							0,
+							Math.min(resources.length - 1, currentRowIndex + rows)
+						);
+						const newResourceId = resources[newRowIndex].id;
+						if (units === 0 && newResourceId === layout.assignment.resourceId) return;
+						const updated: Assignment = {
+							...layout.assignment,
+							resourceId: newResourceId,
+							startDate: addUnits(layout.assignment.startDate, units, zoom.unit),
+							endDate: addUnits(layout.assignment.endDate, units, zoom.unit)
+						};
+						statusMessage = `キー移動 ${fmtRange(updated)}`;
+						onMove?.(updated);
+					}}
+					onKeyResize={(edge, units) => {
+						if (edge === 'start') {
+							const newStart = addUnits(layout.assignment.startDate, units, zoom.unit);
+							if (newStart >= layout.assignment.endDate) return;
+							const updated = { ...layout.assignment, startDate: newStart };
+							statusMessage = `キー開始日変更 ${fmtRange(updated)}`;
+							onResize?.(updated);
+						} else {
+							const newEnd = addUnits(layout.assignment.endDate, units, zoom.unit);
+							if (newEnd <= layout.assignment.startDate) return;
+							const updated = { ...layout.assignment, endDate: newEnd };
+							statusMessage = `キー終了日変更 ${fmtRange(updated)}`;
+							onResize?.(updated);
 						}
 					}}
 				/>
 			{/each}
 		</div>
 	</div>
+
+	<div id={statusId} role="status" aria-live="polite" class="sr-only">{statusMessage}</div>
 </div>
 
 <style>
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
+	}
 	.timeline {
 		display: grid;
 		grid-template-columns: var(--ui-resource-col-width) 1fr;

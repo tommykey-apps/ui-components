@@ -12,8 +12,13 @@
 		minWidth?: number;
 		draggable?: boolean;
 		resizable?: boolean;
+		ariaDescribedBy?: string;
 		onDragEnd?: (dx: number, dy: number) => void;
 		onResizeEnd?: (edge: 'start' | 'end', dx: number) => void;
+		/** キーボード矢印で move (units, rows)。Shift で 5 倍 */
+		onKeyMove?: (units: number, rows: number) => void;
+		/** Alt + 矢印で resize (start / end edge を ±1 unit) */
+		onKeyResize?: (edge: 'start' | 'end', units: number) => void;
 	};
 
 	let {
@@ -25,8 +30,11 @@
 		minWidth = 16,
 		draggable = true,
 		resizable = true,
+		ariaDescribedBy,
 		onDragEnd,
-		onResizeEnd
+		onResizeEnd,
+		onKeyMove,
+		onKeyResize
 	}: Props = $props();
 
 	let mode = $state<DragMode>('idle');
@@ -101,6 +109,34 @@
 			onResizeEnd?.('end', finalDx);
 		}
 	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		const step = e.shiftKey ? 5 : 1;
+		switch (e.key) {
+			case 'ArrowLeft':
+				e.preventDefault();
+				if (e.altKey) onKeyResize?.('start', -1);
+				else onKeyMove?.(-step, 0);
+				break;
+			case 'ArrowRight':
+				e.preventDefault();
+				if (e.altKey) onKeyResize?.('end', 1);
+				else onKeyMove?.(step, 0);
+				break;
+			case 'ArrowUp':
+				if (e.shiftKey) {
+					e.preventDefault();
+					onKeyMove?.(0, -1);
+				}
+				break;
+			case 'ArrowDown':
+				if (e.shiftKey) {
+					e.preventDefault();
+					onKeyMove?.(0, 1);
+				}
+				break;
+		}
+	}
 </script>
 
 <div
@@ -115,10 +151,12 @@
 	role="button"
 	tabindex="0"
 	aria-label={assignment.label ?? assignment.id}
+	aria-describedby={ariaDescribedBy}
 	onpointerdown={handlePointerDownBody}
 	onpointermove={handlePointerMove}
 	onpointerup={handlePointerUp}
 	onpointercancel={handlePointerUp}
+	onkeydown={handleKeydown}
 >
 	<span class="label">{assignment.label ?? ''}</span>
 

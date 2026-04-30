@@ -27,7 +27,6 @@ export default defineConfig({
 		},
 		projects: [
 			{
-				name: 'unit',
 				extends: true,
 				test: {
 					name: 'unit',
