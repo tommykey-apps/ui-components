@@ -35,6 +35,28 @@
 	let canvasWidth = $derived(cols * zoom.colWidth);
 	let canvasHeight = $derived(resources.length * rowHeight);
 
+	type HeaderGroup = { value: string; span: number; startIdx: number };
+
+	function groupHeaderCells(cells: Date[], fmt: string): HeaderGroup[] {
+		return cells.reduce<HeaderGroup[]>((acc, col, i) => {
+			const value = format(col, fmt);
+			const last = acc[acc.length - 1];
+			if (last && last.value === value) {
+				last.span += 1;
+			} else {
+				acc.push({ value, span: 1, startIdx: i });
+			}
+			return acc;
+		}, []);
+	}
+
+	let headerTiers = $derived(
+		zoom.headers.map((tier) => ({
+			tier,
+			groups: groupHeaderCells(columns, tier.fmt)
+		}))
+	);
+
 	type Layout = {
 		assignment: Assignment;
 		x: number;
@@ -70,11 +92,11 @@
 	<div class="corner"></div>
 
 	<div class="headers" style:width="{canvasWidth}px">
-		{#each zoom.headers as tier, tierIndex (tierIndex)}
+		{#each headerTiers as tier, tierIndex (tierIndex)}
 			<div class="header-row">
-				{#each columns as col, ci (ci)}
-					<div class="header-cell" style:width="{zoom.colWidth}px">
-						{format(col, tier.fmt)}
+				{#each tier.groups as cell (cell.startIdx)}
+					<div class="header-cell" style:width="{cell.span * zoom.colWidth}px">
+						{cell.value}
 					</div>
 				{/each}
 			</div>
