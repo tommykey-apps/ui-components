@@ -2,7 +2,7 @@
 	import { format } from 'date-fns';
 	import Bar from './Bar.svelte';
 	import type { Assignment, Resource, ZoomLevel } from './types.js';
-	import { addUnits, barRect, startOfUnit, viewportColumns } from './projection.js';
+	import { addUnits, allocateLanes, barRect, startOfUnit, viewportColumns } from './projection.js';
 	import { ZOOMS } from './zoom.js';
 
 	type Props = {
@@ -10,7 +10,12 @@
 		assignments: Assignment[];
 		viewportStart?: Date;
 		zoom?: ZoomLevel;
+		/** 単一 lane 行の最低高さ(px)。lane が増えると伸びる */
 		rowHeight?: number;
+		/** 各バーの実高さ(px) */
+		barHeight?: number;
+		/** lane 間の縦 gap(px、上下ぶん) */
+		laneGap?: number;
 		resourceColWidth?: number;
 		visibleCols?: number;
 		onMove?: (assignment: Assignment) => void;
@@ -23,6 +28,8 @@
 		viewportStart = new Date(),
 		zoom = ZOOMS.day,
 		rowHeight = 40,
+		barHeight = 32,
+		laneGap = 4,
 		resourceColWidth = 200,
 		visibleCols,
 		onMove,
@@ -33,7 +40,30 @@
 	let origin = $derived(startOfUnit(viewportStart, zoom.unit));
 	let columns = $derived(viewportColumns(origin, cols, zoom.unit));
 	let canvasWidth = $derived(cols * zoom.colWidth);
-	let canvasHeight = $derived(resources.length * rowHeight);
+
+	type RowLayout = {
+		resource: Resource;
+		rowTop: number;
+		height: number;
+		lanes: Map<string, number>;
+		laneCount: number;
+	};
+
+	let rowLayouts = $derived.by(() => {
+		let top = 0;
+		const result: RowLayout[] = [];
+		for (const r of resources) {
+			const rAssignments = assignments.filter((a) => a.resourceId === r.id);
+			const { lanes, laneCount } = allocateLanes(rAssignments);
+			const used = Math.max(laneCount, 1);
+			const height = Math.max(rowHeight, used * (barHeight + laneGap) + laneGap);
+			result.push({ resource: r, rowTop: top, height, lanes, laneCount });
+			top += height;
+		}
+		return result;
+	});
+
+	let canvasHeight = $derived(rowLayouts.reduce((sum, r) => sum + r.height, 0));
 
 	type HeaderGroup = { value: string; span: number; startIdx: number };
 
@@ -62,19 +92,22 @@
 		x: number;
 		y: number;
 		width: number;
+		height: number;
 	};
 
 	let layouts: Layout[] = $derived(
 		assignments
 			.map((a) => {
-				const rowIndex = resources.findIndex((r) => r.id === a.resourceId);
-				if (rowIndex === -1) return null;
+				const row = rowLayouts.find((r) => r.resource.id === a.resourceId);
+				if (!row) return null;
+				const laneIndex = row.lanes.get(a.id) ?? 0;
 				const rect = barRect(a, origin, zoom);
 				return {
 					assignment: a,
 					x: rect.x,
-					y: rowIndex * rowHeight + 2,
-					width: rect.width
+					y: row.rowTop + laneGap + laneIndex * (barHeight + laneGap),
+					width: rect.width,
+					height: barHeight
 				};
 			})
 			.filter((l): l is Layout => l !== null)
@@ -104,15 +137,15 @@
 	</div>
 
 	<aside class="resources">
-		{#each resources as resource (resource.id)}
-			<div class="resource-row">{resource.name}</div>
+		{#each rowLayouts as row (row.resource.id)}
+			<div class="resource-row" style:height="{row.height}px">{row.resource.name}</div>
 		{/each}
 	</aside>
 
 	<div class="canvas-wrap">
 		<div class="canvas" style:width="{canvasWidth}px" style:height="{canvasHeight}px">
-			{#each resources as _, rowIndex (rowIndex)}
-				<div class="grid-row" style:top="{rowIndex * rowHeight}px">
+			{#each rowLayouts as row (row.resource.id)}
+				<div class="grid-row" style:top="{row.rowTop}px" style:height="{row.height}px">
 					{#each columns as _col, ci (ci)}
 						<div class="grid-cell" style:left="{ci * zoom.colWidth}px" style:width="{zoom.colWidth}px"></div>
 					{/each}
@@ -125,16 +158,16 @@
 					x={layout.x}
 					y={layout.y}
 					width={layout.width}
-					height={rowHeight - 4}
+					height={layout.height}
 					minWidth={zoom.colWidth}
 					onDragEnd={(dx, dy) => {
 						const colDelta = Math.round(dx / zoom.colWidth);
-						const rowDelta = Math.round(dy / rowHeight);
-						const currentRow = resources.findIndex(
-							(r) => r.id === layout.assignment.resourceId
+						// 行跨ぎ判定: y + dy がどの rowLayout の範囲に入るかで決める(等高 row 前提の Math.round は不可)
+						const targetY = layout.y + dy;
+						const newRow = rowLayouts.find(
+							(r) => targetY >= r.rowTop && targetY < r.rowTop + r.height
 						);
-						const newRow = Math.max(0, Math.min(resources.length - 1, currentRow + rowDelta));
-						const newResourceId = resources[newRow].id;
+						const newResourceId = newRow?.resource.id ?? layout.assignment.resourceId;
 						if (colDelta === 0 && newResourceId === layout.assignment.resourceId) return;
 						onMove?.({
 							...layout.assignment,

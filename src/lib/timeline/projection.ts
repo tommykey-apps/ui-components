@@ -90,3 +90,31 @@ export function viewportColumns(viewportStart: Date, count: number, unit: ZoomUn
 	const start = startOfUnit(viewportStart, unit);
 	return Array.from({ length: count }, (_, i) => addUnits(start, i, unit));
 }
+
+/**
+ * 同一行内 Assignment の lane index を計算する(Greedy First-Fit / interval graph coloring)。
+ * 時刻順 sort → 各 lane の最終 endDate を track → 空いている最小 index lane に割り当て。
+ *
+ * 戻り値:
+ * - lanes: assignment.id → lane index (0-origin)
+ * - laneCount: そのリソースで使われた lane 総数(行高さ計算用)
+ */
+export function allocateLanes(assignments: Assignment[]): {
+	lanes: Map<string, number>;
+	laneCount: number;
+} {
+	const sorted = [...assignments].sort((a, b) => +a.startDate - +b.startDate);
+	const laneEnds: Date[] = [];
+	const lanes = new Map<string, number>();
+	for (const a of sorted) {
+		let i = laneEnds.findIndex((e) => e <= a.startDate);
+		if (i === -1) {
+			i = laneEnds.length;
+			laneEnds.push(a.endDate);
+		} else {
+			laneEnds[i] = a.endDate;
+		}
+		lanes.set(a.id, i);
+	}
+	return { lanes, laneCount: laneEnds.length };
+}

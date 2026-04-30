@@ -3,6 +3,7 @@ export { default as Bar } from './timeline/Bar.svelte';
 export { ZOOMS } from './timeline/zoom.js';
 export {
 	addUnits,
+	allocateLanes,
 	barRect,
 	dateToX,
 	snapDate,
