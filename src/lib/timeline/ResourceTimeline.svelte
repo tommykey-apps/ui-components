@@ -285,8 +285,56 @@
 		border-radius: var(--ui-radius, 6px);
 		overflow: auto;
 		max-height: 100%;
+		scrollbar-gutter: stable;
 		/* iOS Safari momentum scroll での sticky 安定化 */
 		-webkit-overflow-scrolling: touch;
+	}
+
+	/* スクロールバー: 常時薄表示 + ホバー強調 (macOS overlay 仕様への対策)
+	   標準プロパティ (Firefox / Chrome 121+ / Safari 18.2+) を主とする */
+	@supports (scrollbar-color: auto) {
+		.timeline {
+			scrollbar-width: thin;
+			scrollbar-color: var(--ui-scrollbar-thumb, oklch(0.85 0 0)) transparent;
+			transition: scrollbar-color 0.15s ease;
+		}
+		.timeline:hover {
+			scrollbar-color: var(--ui-scrollbar-thumb-hover, oklch(0.6 0 0)) transparent;
+		}
+	}
+
+	/* fallback: WebKit pseudo-element (古い Safari / Chrome 120 以下)
+	   両方書くと scrollbar-color が優先で webkit-pseudo が無効化されるため
+	   not (scrollbar-color: auto) で明示的に出し分け */
+	@supports selector(::-webkit-scrollbar) and (not (scrollbar-color: auto)) {
+		.timeline::-webkit-scrollbar {
+			width: var(--ui-scrollbar-size, 10px);
+			height: var(--ui-scrollbar-size, 10px);
+			background: transparent;
+		}
+		.timeline::-webkit-scrollbar-track {
+			background: transparent;
+		}
+		.timeline::-webkit-scrollbar-thumb {
+			background: var(--ui-scrollbar-thumb, oklch(0.85 0 0));
+			border-radius: 999px;
+			border: 2px solid transparent;
+			background-clip: padding-box;
+			transition: background-color 0.15s ease;
+		}
+		.timeline:hover::-webkit-scrollbar-thumb {
+			background: var(--ui-scrollbar-thumb-hover, oklch(0.6 0 0));
+			background-clip: padding-box;
+		}
+	}
+
+	/* タッチデバイスでは透明 (touch スワイプ自体が affordance)
+	   any-hover: none は「どの入力デバイスもホバー不可能」 = pure touch only
+	   マウス付き iPad など hybrid 環境では発動しない */
+	@media (any-hover: none) {
+		.timeline {
+			scrollbar-color: transparent transparent;
+		}
 	}
 
 	.corner {
