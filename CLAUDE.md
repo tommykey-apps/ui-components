@@ -60,7 +60,6 @@ CI: `secrets.GITHUB_TOKEN` をそのまま使う。
 
 - **スタイル: scoped `<style>` + CSS変数 (`--ui-*` プレフィクス)**
   消費アプリの Tailwind バージョンに依存させない。テーマは CSS変数で消費側が上書き。
-  scrollbar 系は `--ui-scrollbar-thumb` / `--ui-scrollbar-thumb-hover` / `--ui-scrollbar-size` を露出。
 - **state: Svelte 5 runes (`$state` / `$derived` / `$bindable`) + Reactive Class パターン**
   ストアは使わない。
 - **drag/resize: `setPointerCapture` パターン**
