@@ -69,11 +69,13 @@ CI: `secrets.GITHUB_TOKEN` をそのまま使う。
   filterStart や zoom は props (`$bindable`) として受け取る。URL同期は消費アプリ側の責務。
 - **日付の渡し方**: 必ず **local-midnight Date** で渡す。`new Date(2026, 4, 4)` のように数値引数で。
   `new Date('YYYY-MM-DDT00:00:00Z')` 形式は UTC 固定 = 非UTC環境(JST等)で時刻ズレし、`barRect` の aligned 判定が外れて末端列に +1 col 余計な太さが出る。
-- **スクロールバー / edge fade 用変数**(消費アプリで上書き可):
-  - `--ui-scrollbar-thumb` (default `oklch(0.7 0 0)`): 通常時 thumb 色
-  - `--ui-scrollbar-thumb-hover` (default `oklch(0.45 0 0)`): hover 時 thumb 色
-  - `--ui-scrollbar-size` (default `10px`): scrollbar 幅(WebKit fallback のみ)
-  - `--ui-edge-fade-width` (default `32px`): 右端 fade 領域幅、`0px` で edge mask 無効化
+- **TimelineToolbar 用 CSS 変数**(消費アプリで上書き可):
+  - `--ui-toolbar-bg / -fg / -gap / -padding`
+  - `--ui-toolbar-button-bg / -fg / -border / -bg-hover / -bg-active / -fg-active`
+  - `--ui-toolbar-button-radius / -height / -padding-x / -font-size`
+  - `--ui-toolbar-focus-ring / -focus-ring-offset / -icon-size`
+- **icons.ts**: phosphor-icons (MIT) の SVG path を文字列定数化(attribution は本ファイル冒頭コメント)
+- **drag-to-pan**: `ResourceTimeline` の canvas 空白領域マウスドラッグで横スクロール。`setPointerCapture` パターン、threshold 5px、Bar 上は除外。`viewportStart` 変更時に scrollLeft 自動 0 リセット
 
 ## Phase 2 進行中の改善 (post-0.1.x)
 
