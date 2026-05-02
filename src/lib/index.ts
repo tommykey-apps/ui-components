@@ -1,5 +1,6 @@
 export { default as ResourceTimeline } from './timeline/ResourceTimeline.svelte';
 export { default as Bar } from './timeline/Bar.svelte';
+export { default as TimelineToolbar } from './timeline/TimelineToolbar.svelte';
 export { ZOOMS } from './timeline/zoom.js';
 export {
 	addUnits,

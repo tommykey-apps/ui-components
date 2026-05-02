@@ -34,7 +34,7 @@
 	let {
 		resources,
 		assignments,
-		viewportStart = new Date(),
+		viewportStart = $bindable(new Date()),
 		zoom = ZOOMS.day,
 		rowHeight = 40,
 		barHeight = 32,
@@ -45,6 +45,54 @@
 		onMove,
 		onResize
 	}: Props = $props();
+
+	// .timeline element ref(drag-to-pan で scrollLeft 制御)
+	let timelineEl = $state<HTMLDivElement | undefined>();
+
+	// viewportStart / zoom が変わった時 scrollLeft を 0 にリセット(drag-pan 残留を消す)
+	$effect(() => {
+		void viewportStart;
+		void zoom;
+		if (timelineEl) timelineEl.scrollLeft = 0;
+	});
+
+	// drag-to-pan 状態
+	const PAN_THRESHOLD = 5;
+	let panStartX = 0;
+	let panStartScrollLeft = 0;
+	let panActive = $state(false);
+	let panPointerId: number | null = null;
+
+	function handleCanvasPointerDown(e: PointerEvent) {
+		if (e.button !== 0 || !timelineEl) return;
+		const target = e.target as HTMLElement;
+		// Bar 上は除外(既存 Bar drag に委譲)
+		if (target.closest('.bar')) return;
+		panStartX = e.clientX;
+		panStartScrollLeft = timelineEl.scrollLeft;
+		panPointerId = e.pointerId;
+		try {
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		} catch {
+			// synthetic event 等で未対応の場合は無視
+		}
+	}
+
+	function handleCanvasPointerMove(e: PointerEvent) {
+		if (!timelineEl || panPointerId === null) return;
+		const dx = e.clientX - panStartX;
+		if (!panActive && Math.abs(dx) >= PAN_THRESHOLD) {
+			panActive = true;
+		}
+		if (panActive) {
+			timelineEl.scrollLeft = panStartScrollLeft - dx;
+		}
+	}
+
+	function handleCanvasPointerUp() {
+		panActive = false;
+		panPointerId = null;
+	}
 
 	let visibleColsResolved = $derived(visibleCols ?? zoom.visibleCols);
 	let origin = $derived(startOfUnit(viewportStart, zoom.unit));
@@ -141,6 +189,7 @@
 </script>
 
 <div
+	bind:this={timelineEl}
 	class="timeline"
 	style:--ui-row-height="{rowHeight}px"
 	style:--ui-resource-col-width="{resourceColWidth}px"
@@ -168,7 +217,18 @@
 		{/each}
 	</aside>
 
-	<div class="canvas" style:width="{canvasWidth}px" style:height="{canvasHeight}px">
+	<div
+		class="canvas"
+		class:panning={panActive}
+		role="region"
+		aria-label="Timeline canvas"
+		style:width="{canvasWidth}px"
+		style:height="{canvasHeight}px"
+		onpointerdown={handleCanvasPointerDown}
+		onpointermove={handleCanvasPointerMove}
+		onpointerup={handleCanvasPointerUp}
+		onpointercancel={handleCanvasPointerUp}
+	>
 		{#each rowLayouts as row (row.resource.id)}
 			<div class="grid-row" style:top="{row.rowTop}px" style:height="{row.height}px">
 				{#each columns as _col, ci (ci)}
@@ -357,6 +417,13 @@
 		grid-row: 2;
 		grid-column: 2;
 		position: relative;
+		cursor: grab;
+		user-select: none;
+		touch-action: pan-y;
+	}
+
+	.canvas.panning {
+		cursor: grabbing;
 	}
 
 	.grid-row {
