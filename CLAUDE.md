@@ -83,3 +83,14 @@ CI: `secrets.GITHUB_TOKEN` をそのまま使う。
 - 同行内 Assignment の vertical stacking(時間重複時に縦に積む、行高さ動的)
 - Vitest による projection 単体テスト
 - キーボード(矢印キーで move/resize)+ aria-live status 対応
+
+## TDD 運用 (#16)
+
+Claude Code session 内で本 repo を編集する際は **必ず先にテストを書く**。
+
+- `/tdd <task>` skill で workflow ガイド (`.claude/skills/tdd/SKILL.md`)
+- `src/lib/**.{ts,svelte}` の Edit / Write 前に、対応 `*.test.ts` が `git diff --cached` に出るか **PreToolUse hook** が確認 (`.claude/hooks/warn-untested.sh`)
+- staged されていなければ `permissionDecision: "ask"` で確認 prompt (deny ではなく ask、iterative work を阻害しない)
+- AI / 人間共通の discipline。RED → GREEN → REFACTOR で進める
+- `src/stories/` / `src/routes/` (publish 対象外) は対象外
+- consumer 側の同 setup: [resource-planner #92 / PR #93](https://github.com/tommykey-apps/resource-planner/pull/93)
