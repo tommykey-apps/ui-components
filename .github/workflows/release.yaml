@@ -13,9 +13,20 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      # GitHub App `tommykey-cd-bot` の token を生成 (#18)。
+      # `secrets.GITHUB_TOKEN` で push すると他 workflow が trigger されない
+      # (https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow)
+      # ため、App token に切り替えることで Version Packages PR の CI を発火可能にする。
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -29,6 +40,8 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: changesets/action@v1
         with:
@@ -36,5 +49,8 @@ jobs:
           publish: pnpm release
           createGithubReleases: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # changesets/action の git push / PR 操作は App token で行う
+          # (Version Packages PR の force-push でも CI が trigger 可能になる)
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          # NPM (GitHub Packages) publish 用 token は GITHUB_TOKEN で十分
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
