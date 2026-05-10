@@ -213,7 +213,11 @@
 
 	<aside class="resources" style:height="{canvasHeight}px">
 		{#each rowLayouts as row (row.resource.id)}
-			<div class="resource-row" style:height="{row.height}px">{row.resource.name}</div>
+			<div
+				class="resource-row"
+				style:height="{row.height}px"
+				title={row.resource.name}
+			>{row.resource.name}</div>
 		{/each}
 	</aside>
 
@@ -399,6 +403,11 @@
 		z-index: 2;
 		display: flex;
 		flex-direction: column;
+		/* 長い resource 名で left rail が canvas 領域を侵食するのを防ぐため、
+		   既定で 200px 幅。消費アプリ側で `--ui-resource-col-width` で上書き可能。 */
+		width: var(--ui-resource-col-width, 200px);
+		min-width: 0;
+		flex-shrink: 0;
 		border-right: 1px solid var(--ui-border, #e5e5e5);
 		background: var(--ui-resource-bg, #fafafa);
 	}
@@ -411,6 +420,11 @@
 		font-size: var(--ui-row-font-size, 13px);
 		border-bottom: 1px solid var(--ui-border, #e5e5e5);
 		box-sizing: border-box;
+		/* 長い名前は省略 + `title` 属性 (上記マークアップ) で full text を hover 表示。 */
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 
 	.canvas {
