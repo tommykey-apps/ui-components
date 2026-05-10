@@ -1,6 +1,6 @@
 {
 	"name": "@tommykey-apps/ui-components",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "Reusable Svelte 5 component library",
 	"license": "MIT",
 	"repository": {
