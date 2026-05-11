@@ -1,5 +1,27 @@
 # @tommykey-apps/ui-components
 
+## 0.5.0
+
+### Minor Changes
+
+- c23ac40: feat(Bar): truncate されている時だけ hover tooltip (title 属性) で案件名を表示
+
+  bar が短い (zoom が広い / 期間が短い) と label が `text-overflow: ellipsis` で切られて何のアサインか視覚的に分からなかった。`ResizeObserver` + `document.fonts.ready` + `tick()` で label 要素の `scrollWidth > clientWidth` を監視し、truncate されている時のみ `title` 属性を渡すよう変更。
+
+  - truncate されてない時は title 属性自体を出さない (常時 hover popup を防ぐ)
+  - `aria-label` は引き続き常に提供 (screen reader 体験は変えない)
+  - zoom 変更 / drag resize / label 文字列変更 / font load 後 すべてに reactive
+
+### Patch Changes
+
+- 1346071: fix(ResourceTimeline): drag/resize 中の Bar が sticky な resource rail / header より手前に表示される問題を修正
+
+  `.canvas` に `isolation: isolate` を追加して自身の stacking context を分離。drag 中の bar の `z-index: 10` は canvas 内部だけで評価され、canvas 全体は親 grid 内で auto (= 0) のまま sticky 領域 (z-index: 2/3) より下に保たれる。
+
+- cf08f26: fix(TimelineToolbar): aria-pressed=true button の fg fallback に `--ui-bar-fg` を挟む
+
+  bg 側は既に 3 段 fallback (`--ui-toolbar-button-bg-active → --ui-bar-bg → #4f46e5`) だが、fg 側だけ semantic primitive 段 (`--ui-bar-fg`) が抜けて `#ffffff` 直結だったため、`--ui-bar-bg` を白系にするテーマで bg と衝突して文字が読めなくなっていた。bg と対称な 3 段 chain に揃える。
+
 ## 0.4.1
 
 ### Patch Changes
