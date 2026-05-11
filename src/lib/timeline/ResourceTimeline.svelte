@@ -431,6 +431,10 @@
 		grid-row: 2;
 		grid-column: 2;
 		position: relative;
+		/* drag/resize 中の Bar (z-index: 10) が sticky な .resources / .headers (z-index: 2/3) を
+		   覆わないよう、canvas 自身で stacking context を切る (#22)。bar の z-index は canvas 内部
+		   だけで評価され、canvas 全体は親 grid 内で auto = 0 のまま sticky 領域より下に保たれる。 */
+		isolation: isolate;
 		cursor: grab;
 		user-select: none;
 		touch-action: pan-y;
