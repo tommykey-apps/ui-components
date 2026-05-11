@@ -262,6 +262,20 @@
 		touch-action: none;
 	}
 
+	/* hit area 拡張 (#20、WCAG 2.5.8 AA: 24×24 最低 / 縦は AAA の 44 達成):
+	   pseudo を pointer 判定領域として使う。visible な hairline は親 .handle のまま、
+	   pseudo は完全透明だが pointer events を受けて parent の listener を発火させる。
+	   - 縦: bar 高さ 32 + 上下 6 = 44 (AAA)
+	   - 横: handle 6 + 左右 9 = 24 (AA)。narrow bar (zoom:day 1-day=64px) で両端 24+24=48 < 64 なので overlap しない。 */
+	.handle::before {
+		content: '';
+		position: absolute;
+		top: -6px;
+		bottom: -6px;
+		left: -9px;
+		right: -9px;
+	}
+
 	.handle:hover {
 		background: var(--ui-handle-hover, rgb(255 255 255 / 0.25));
 	}
