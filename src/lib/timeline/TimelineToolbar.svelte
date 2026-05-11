@@ -187,7 +187,9 @@
 
 	.btn.active {
 		background: var(--ui-toolbar-button-bg-active, var(--ui-bar-bg, #4f46e5));
-		color: var(--ui-toolbar-button-fg-active, #ffffff);
+		/* fg は bg と対称に semantic primitive (--ui-bar-fg) も fallback に挟む (#21)。
+		   元の hardcoded #ffffff だけだと --ui-bar-bg を白系にしたテーマで bg と衝突する。 */
+		color: var(--ui-toolbar-button-fg-active, var(--ui-bar-fg, #ffffff));
 		border-color: transparent;
 	}
 
