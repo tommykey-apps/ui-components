@@ -1,5 +1,75 @@
 # @tommykey-apps/ui-components
 
+## 0.7.0
+
+### Minor Changes
+
+- fec304c: feat(ResourceTimeline): auto-fit resource rail width to the longest name
+
+  `resourceColWidth` now accepts `'auto'` (opt-in) in addition to a number. When
+  'auto', the rail column shrinks/expands to the content with `minmax(min,
+fit-content(max))`. Two new props control the bounds:
+
+  ```svelte
+  <ResourceTimeline resourceColWidth="auto" /> <!-- default min=100, max=400 -->
+  <ResourceTimeline resourceColWidth="auto" resourceColMinWidth={120} resourceColMaxWidth={300} />
+  ```
+
+  CSS-only via CSS Grid `fit-content()` — no `ResizeObserver`, no `measureText`,
+  no `$effect`. `position: sticky` on the rail continues to work because it is
+  independent of column sizing. Names that exceed the max still ellipsis-truncate
+  as before.
+
+  Backward compatible: `resourceColWidth` default is still `200` (fixed px).
+  Consumers opt in by passing `'auto'`.
+
+- 545e2d7: feat(i18n): accept `labels` prop on `ResourceTimeline` for a11y / aria-live overrides
+
+  Hard-coded Japanese a11y strings (resize handle `aria-label`, `aria-live` status
+  messages) used to bleed into every consumer regardless of locale. The library now
+  ships **English defaults** and exposes a `labels` prop on `ResourceTimeline` so
+  consumers can inject their own translations:
+
+  ```svelte
+  <ResourceTimeline
+    labels={{
+      bar: { resizeStart: '開始日リサイズ', resizeEnd: '終了日リサイズ' },
+      canvas: { region: 'タイムライン' },
+      status: {
+        move: (range) => `移動: ${range}`,
+        resizeStart: (range) => `開始日変更: ${range}`,
+        // ... rest
+      }
+    }}
+    {...other}
+  />
+  ```
+
+  New public types: `BarLabels`, `TimelineLabels`, and a `DEFAULT_TIMELINE_LABELS`
+  constant for consumers that want to spread/override partial keys.
+
+  Backward compatible: defaults move from Japanese to English, but any consumer who
+  was already passing through these strings would override them anyway. Consumers
+  that relied on the implicit Japanese defaults need to either accept the English
+  defaults or pass a `labels` prop.
+
+### Patch Changes
+
+- 533a1cb: fix(Bar): keep the project label visible by sticking it to the viewport edge
+
+  Long-duration bars (e.g. 6+ months) that extend beyond the viewport used to render
+  their label at the bar's leading edge — which could be hundreds of pixels off-screen,
+  making it impossible to tell which project a bar belonged to without scrolling.
+
+  The `.label` span now uses `position: sticky; left: 8px; right: 8px;` so it tracks
+  the viewport's left edge while the bar is partially scrolled out, then snaps back
+  to its normal position once the bar is fully in view. CSS-only; no JS observers.
+  Matches the Gantt UX of Google Sheets / Linear / Microsoft Project Web.
+
+  The existing hover-tooltip (`#23` / `#28`) still triggers when the label is
+  ellipsis-truncated on narrow bars — the two mechanisms address different cases
+  (viewport-out vs. truncation) and don't interfere.
+
 ## 0.6.0
 
 ### Minor Changes
