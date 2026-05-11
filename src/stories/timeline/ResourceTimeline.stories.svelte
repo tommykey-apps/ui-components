@@ -73,6 +73,32 @@
 	}}
 />
 
+<!--
+	#34: resource rail を `resourceColWidth: 'auto'` で内容に fit させる story。
+	min/max は default の 100 / 400 px。 短名は 100px floor、 長名は 400px cap で
+	ellipsis。 fixed 200px の story と並べて比較できる。
+-->
+<Story
+	name="AutoFitResourceRail (#34)"
+	args={{
+		zoom: ZOOMS.day,
+		visibleCols: 14,
+		resourceColWidth: 'auto',
+		resources: [
+			{ id: 'a', name: '田中' },
+			{ id: 'b', name: '高橋太郎' },
+			{ id: 'c', name: '高橋太郎 (営業1部 マネージャー)' },
+			{ id: 'd', name: 'すごく長い名前で max を超える場合の挙動確認用エントリー' }
+		],
+		assignments: [
+			{ id: 'aa1', resourceId: 'a', startDate: new Date(2026, 4, 4), endDate: new Date(2026, 4, 8), label: '短', color: '#4f46e5' },
+			{ id: 'aa2', resourceId: 'b', startDate: new Date(2026, 4, 4), endDate: new Date(2026, 4, 10), label: '中', color: '#10b981' },
+			{ id: 'aa3', resourceId: 'c', startDate: new Date(2026, 4, 4), endDate: new Date(2026, 4, 12), label: '長', color: '#f59e0b' },
+			{ id: 'aa4', resourceId: 'd', startDate: new Date(2026, 4, 4), endDate: new Date(2026, 4, 14), label: '超長', color: '#ef4444' }
+		]
+	}}
+/>
+
 <Story
 	name="ManyResources"
 	args={{
