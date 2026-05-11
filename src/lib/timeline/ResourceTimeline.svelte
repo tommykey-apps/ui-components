@@ -2,7 +2,7 @@
 	import { format } from 'date-fns';
 	import { Tooltip } from 'bits-ui';
 	import Bar from './Bar.svelte';
-	import type { Assignment, HeaderTier, Resource, ZoomLevel } from './types.js';
+	import type { Assignment, HeaderTier, Resource, TimelineLabels, ZoomLevel } from './types.js';
 	import {
 		addUnits,
 		allocateLanes,
@@ -12,6 +12,7 @@
 		viewportColumns
 	} from './projection.js';
 	import { ZOOMS } from './zoom.js';
+	import { resolveLabels } from './labels.js';
 
 	type Props = {
 		resources: Resource[];
@@ -28,6 +29,11 @@
 		visibleCols?: number;
 		/** canvas 末端のスクロール余白(列数)。最遠 Assignment の endDate +α まで grid を描画する */
 		bufferCols?: number;
+		/**
+		 * #33: a11y / aria-live で使う文字列の i18n override。 default は英語。
+		 * consumer (例: resource-planner) の locale state を渡して翻訳済を流せる。
+		 */
+		labels?: TimelineLabels;
 		onMove?: (assignment: Assignment) => void;
 		onResize?: (assignment: Assignment) => void;
 	};
@@ -43,9 +49,13 @@
 		resourceColWidth = 200,
 		visibleCols,
 		bufferCols = 7,
+		labels,
 		onMove,
 		onResize
 	}: Props = $props();
+
+	// i18n labels を merge して常に全 key 揃った state にする (#33)
+	const L = $derived(resolveLabels(labels));
 
 	// .timeline element ref(drag-to-pan で scrollLeft 制御)
 	let timelineEl = $state<HTMLDivElement | undefined>();
@@ -229,7 +239,7 @@
 		class="canvas"
 		class:panning={panActive}
 		role="region"
-		aria-label="Timeline canvas"
+		aria-label={L.canvas.region}
 		style:width="{canvasWidth}px"
 		style:height="{canvasHeight}px"
 		onpointerdown={handleCanvasPointerDown}
@@ -254,6 +264,7 @@
 					height={layout.height}
 					minWidth={zoom.colWidth}
 					ariaDescribedBy={statusId}
+					labels={L.bar}
 					onDragEnd={(dx, dy) => {
 						const colDelta = Math.round(dx / zoom.colWidth);
 						// 行跨ぎ判定: y + dy がどの rowLayout の範囲に入るかで決める(等高 row 前提の Math.round は不可)
@@ -269,7 +280,7 @@
 							startDate: addUnits(layout.assignment.startDate, colDelta, zoom.unit),
 							endDate: addUnits(layout.assignment.endDate, colDelta, zoom.unit)
 						};
-						statusMessage = `移動 ${fmtRange(updated)}`;
+						statusMessage = L.status.move(fmtRange(updated));
 						onMove?.(updated);
 					}}
 					onResizeEnd={(edge, dx) => {
@@ -279,13 +290,13 @@
 							const newStart = addUnits(layout.assignment.startDate, colDelta, zoom.unit);
 							if (newStart >= layout.assignment.endDate) return;
 							const updated = { ...layout.assignment, startDate: newStart };
-							statusMessage = `開始日変更 ${fmtRange(updated)}`;
+							statusMessage = L.status.resizeStart(fmtRange(updated));
 							onResize?.(updated);
 						} else {
 							const newEnd = addUnits(layout.assignment.endDate, colDelta, zoom.unit);
 							if (newEnd <= layout.assignment.startDate) return;
 							const updated = { ...layout.assignment, endDate: newEnd };
-							statusMessage = `終了日変更 ${fmtRange(updated)}`;
+							statusMessage = L.status.resizeEnd(fmtRange(updated));
 							onResize?.(updated);
 						}
 					}}
@@ -305,7 +316,7 @@
 							startDate: addUnits(layout.assignment.startDate, units, zoom.unit),
 							endDate: addUnits(layout.assignment.endDate, units, zoom.unit)
 						};
-						statusMessage = `キー移動 ${fmtRange(updated)}`;
+						statusMessage = L.status.keyMove(fmtRange(updated));
 						onMove?.(updated);
 					}}
 					onKeyResize={(edge, units) => {
@@ -313,13 +324,13 @@
 							const newStart = addUnits(layout.assignment.startDate, units, zoom.unit);
 							if (newStart >= layout.assignment.endDate) return;
 							const updated = { ...layout.assignment, startDate: newStart };
-							statusMessage = `キー開始日変更 ${fmtRange(updated)}`;
+							statusMessage = L.status.keyResizeStart(fmtRange(updated));
 							onResize?.(updated);
 						} else {
 							const newEnd = addUnits(layout.assignment.endDate, units, zoom.unit);
 							if (newEnd <= layout.assignment.startDate) return;
 							const updated = { ...layout.assignment, endDate: newEnd };
-							statusMessage = `キー終了日変更 ${fmtRange(updated)}`;
+							statusMessage = L.status.keyResizeEnd(fmtRange(updated));
 							onResize?.(updated);
 						}
 					}}

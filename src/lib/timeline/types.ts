@@ -40,3 +40,38 @@ export type ZoomLevel = {
 	snapUnit: SnapUnit;
 	headers: HeaderTier[];
 };
+
+/**
+ * Bar 内の各 part の aria-label。 ライブラリ default は英語、 consumer が locale 済を渡せる。
+ * #33: アクセシビリティのため hidden text として常時付与される文字列。
+ */
+export type BarLabels = {
+	/** 開始日リサイズ handle */
+	resizeStart?: string;
+	/** 終了日リサイズ handle */
+	resizeEnd?: string;
+};
+
+/**
+ * ResourceTimeline 全体に渡る i18n 文字列。 consumer の locale に追従させる場合は
+ * \`<ResourceTimeline labels={...}>\` で override する。 default は **英語**。
+ */
+export type TimelineLabels = {
+	bar?: BarLabels;
+	canvas?: {
+		/** \`<div role="region" aria-label="...">\` */
+		region?: string;
+	};
+	/**
+	 * 操作後に aria-live="polite" な status 要素に流れる文言。 receive する引数は
+	 * 「YYYY-MM-DD 〜 YYYY-MM-DD」 形式の range 文字列。 consumer 側で template を組む。
+	 */
+	status?: {
+		move?: (range: string) => string;
+		resizeStart?: (range: string) => string;
+		resizeEnd?: (range: string) => string;
+		keyMove?: (range: string) => string;
+		keyResizeStart?: (range: string) => string;
+		keyResizeEnd?: (range: string) => string;
+	};
+};

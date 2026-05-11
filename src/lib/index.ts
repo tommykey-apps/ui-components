@@ -18,9 +18,12 @@ export {
 } from './timeline/projection.js';
 export type {
 	Assignment,
+	BarLabels,
 	HeaderTier,
 	Resource,
 	SnapUnit,
+	TimelineLabels,
 	ZoomLevel,
 	ZoomUnit
 } from './timeline/types.js';
+export { DEFAULT_TIMELINE_LABELS } from './timeline/labels.js';

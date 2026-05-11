@@ -2,7 +2,7 @@
 	import { tick } from 'svelte';
 	import { Tooltip } from 'bits-ui';
 	import { isTruncated } from './truncation.js';
-	import type { Assignment } from './types.js';
+	import type { Assignment, BarLabels } from './types.js';
 
 	type DragMode = 'idle' | 'move' | 'resize-start' | 'resize-end';
 
@@ -16,6 +16,11 @@
 		draggable?: boolean;
 		resizable?: boolean;
 		ariaDescribedBy?: string;
+		/**
+		 * #33: a11y 文字列 (resize handle の aria-label) を consumer の locale で override。
+		 * default は英語、 ResourceTimeline 経由で渡すのが通常 (consumer は \`<ResourceTimeline labels={...}>\`)。
+		 */
+		labels?: Required<BarLabels>;
 		onDragEnd?: (dx: number, dy: number) => void;
 		onResizeEnd?: (edge: 'start' | 'end', dx: number) => void;
 		/** キーボード矢印で move (units, rows)。Shift で 5 倍 */
@@ -34,6 +39,7 @@
 		draggable = true,
 		resizable = true,
 		ariaDescribedBy,
+		labels = { resizeStart: 'Resize start', resizeEnd: 'Resize end' },
 		onDragEnd,
 		onResizeEnd,
 		onKeyMove,
@@ -201,7 +207,7 @@
 					<div
 						class="handle handle-start"
 						role="separator"
-						aria-label="開始日リサイズ"
+						aria-label={labels.resizeStart}
 						onpointerdown={handlePointerDownLeft}
 						onpointermove={handlePointerMove}
 						onpointerup={handlePointerUp}
@@ -210,7 +216,7 @@
 					<div
 						class="handle handle-end"
 						role="separator"
-						aria-label="終了日リサイズ"
+						aria-label={labels.resizeEnd}
 						onpointerdown={handlePointerDownRight}
 						onpointermove={handlePointerMove}
 						onpointerup={handlePointerUp}
