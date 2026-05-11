@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { tick } from 'svelte';
+	import { isTruncated } from './truncation.js';
 	import type { Assignment } from './types.js';
 
 	type DragMode = 'idle' | 'move' | 'resize-start' | 'resize-end';
@@ -42,6 +44,31 @@
 	let startY = 0;
 	let dx = $state(0);
 	let dy = $state(0);
+
+	// hover tooltip 表示制御 (#23)。label が ellipsis で切れている時だけ title 属性を出す。
+	let labelEl = $state<HTMLSpanElement | undefined>();
+	let labelTruncated = $state(false);
+
+	async function measureTruncation(): Promise<void> {
+		await tick();
+		labelTruncated = isTruncated(labelEl);
+	}
+
+	$effect(() => {
+		// 依存: label 文字列変更時にも再測定 (要素サイズ不変ケース)。
+		void assignment.label;
+		if (!labelEl) return;
+		// font load 後の metrics 変化に追従。document.fonts は modern browser 全対応。
+		if (typeof document !== 'undefined' && document.fonts?.ready) {
+			document.fonts.ready.then(measureTruncation);
+		} else {
+			void measureTruncation();
+		}
+		// 以降の size 変更 (zoom / drag resize / 親 layout) を観測。
+		const ro = new ResizeObserver(() => void measureTruncation());
+		ro.observe(labelEl);
+		return () => ro.disconnect();
+	});
 
 	let liveLeft = $derived(
 		x + (mode === 'move' || mode === 'resize-start' ? dx : 0)
@@ -152,13 +179,14 @@
 	tabindex="0"
 	aria-label={assignment.label ?? assignment.id}
 	aria-describedby={ariaDescribedBy}
+	title={labelTruncated ? (assignment.label ?? '') : null}
 	onpointerdown={handlePointerDownBody}
 	onpointermove={handlePointerMove}
 	onpointerup={handlePointerUp}
 	onpointercancel={handlePointerUp}
 	onkeydown={handleKeydown}
 >
-	<span class="label">{assignment.label ?? ''}</span>
+	<span class="label" bind:this={labelEl}>{assignment.label ?? ''}</span>
 
 	{#if resizable}
 		<div
