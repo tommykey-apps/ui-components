@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { format } from 'date-fns';
+	import { Tooltip } from 'bits-ui';
 	import Bar from './Bar.svelte';
 	import type { Assignment, HeaderTier, Resource, ZoomLevel } from './types.js';
 	import {
@@ -188,6 +189,9 @@
 	);
 </script>
 
+<!-- #28: Bar の tooltip 用に Provider を 1 度だけ wrap (delayDuration を snappy に短縮)。
+	consumer に Provider 提供を強要しない (library 内で self-contained)。 -->
+<Tooltip.Provider delayDuration={200} skipDelayDuration={300}>
 <div
 	bind:this={timelineEl}
 	class="timeline"
@@ -325,6 +329,7 @@
 
 	<div id={statusId} role="status" aria-live="polite" class="sr-only">{statusMessage}</div>
 </div>
+</Tooltip.Provider>
 
 <style>
 	.sr-only {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { Tooltip } from 'bits-ui';
 	import { isTruncated } from './truncation.js';
 	import type { Assignment } from './types.js';
 
@@ -166,49 +167,66 @@
 	}
 </script>
 
-<div
-	class="bar"
-	class:dragging={mode === 'move'}
-	class:resizing={mode === 'resize-start' || mode === 'resize-end'}
-	style:--bar-left="{liveLeft}px"
-	style:--bar-top="{liveTop}px"
-	style:--bar-width="{liveWidth}px"
-	style:--bar-height="{height}px"
-	style:--bar-bg-override={assignment.color ?? null}
-	role="button"
-	tabindex="0"
-	aria-label={assignment.label ?? assignment.id}
-	aria-describedby={ariaDescribedBy}
-	title={labelTruncated ? (assignment.label ?? '') : null}
-	onpointerdown={handlePointerDownBody}
-	onpointermove={handlePointerMove}
-	onpointerup={handlePointerUp}
-	onpointercancel={handlePointerUp}
-	onkeydown={handleKeydown}
->
-	<span class="label" bind:this={labelEl}>{assignment.label ?? ''}</span>
+<!--
+	#28 / #23 を refactor: native `title` 属性を bits-ui Tooltip (floating-ui ベース) に置換。
+	`disabled={!labelTruncated}` で truncate されてない時は完全に mount しない (perf + 余計な popup 防止)。
+	Trigger は asChild snippet で既存 bar div に props をマージ、Portal で Gantt の overflow:hidden を回避。
+-->
+<Tooltip.Root disabled={!labelTruncated}>
+	<Tooltip.Trigger>
+		{#snippet child({ props })}
+			<div
+				{...props}
+				class="bar"
+				class:dragging={mode === 'move'}
+				class:resizing={mode === 'resize-start' || mode === 'resize-end'}
+				style:--bar-left="{liveLeft}px"
+				style:--bar-top="{liveTop}px"
+				style:--bar-width="{liveWidth}px"
+				style:--bar-height="{height}px"
+				style:--bar-bg-override={assignment.color ?? null}
+				role="button"
+				tabindex="0"
+				aria-label={assignment.label ?? assignment.id}
+				aria-describedby={ariaDescribedBy}
+				onpointerdown={handlePointerDownBody}
+				onpointermove={handlePointerMove}
+				onpointerup={handlePointerUp}
+				onpointercancel={handlePointerUp}
+				onkeydown={handleKeydown}
+			>
+				<span class="label" bind:this={labelEl}>{assignment.label ?? ''}</span>
 
-	{#if resizable}
-		<div
-			class="handle handle-start"
-			role="separator"
-			aria-label="開始日リサイズ"
-			onpointerdown={handlePointerDownLeft}
-			onpointermove={handlePointerMove}
-			onpointerup={handlePointerUp}
-			onpointercancel={handlePointerUp}
-		></div>
-		<div
-			class="handle handle-end"
-			role="separator"
-			aria-label="終了日リサイズ"
-			onpointerdown={handlePointerDownRight}
-			onpointermove={handlePointerMove}
-			onpointerup={handlePointerUp}
-			onpointercancel={handlePointerUp}
-		></div>
-	{/if}
-</div>
+				{#if resizable}
+					<div
+						class="handle handle-start"
+						role="separator"
+						aria-label="開始日リサイズ"
+						onpointerdown={handlePointerDownLeft}
+						onpointermove={handlePointerMove}
+						onpointerup={handlePointerUp}
+						onpointercancel={handlePointerUp}
+					></div>
+					<div
+						class="handle handle-end"
+						role="separator"
+						aria-label="終了日リサイズ"
+						onpointerdown={handlePointerDownRight}
+						onpointermove={handlePointerMove}
+						onpointerup={handlePointerUp}
+						onpointercancel={handlePointerUp}
+					></div>
+				{/if}
+			</div>
+		{/snippet}
+	</Tooltip.Trigger>
+	<Tooltip.Portal>
+		<Tooltip.Content class="ui-bar-tooltip" side="top" sideOffset={4}>
+			{assignment.label ?? ''}
+			<Tooltip.Arrow class="ui-bar-tooltip-arrow" />
+		</Tooltip.Content>
+	</Tooltip.Portal>
+</Tooltip.Root>
 
 <style>
 	.bar {
@@ -272,5 +290,23 @@
 
 	.handle-end {
 		right: 0;
+	}
+
+	/* #28: Tooltip.Content / Tooltip.Arrow は Portal で document.body 配下に mount される。
+	   scoped style では届かないので :global() で書く。テーマは ui-bar-bg / ui-bar-fg と一貫させる。 */
+	:global(.ui-bar-tooltip) {
+		background: var(--ui-bar-bg, #1a1a1a);
+		color: var(--ui-bar-fg, #ffffff);
+		padding: 6px 10px;
+		border-radius: var(--ui-bar-radius, 4px);
+		font-size: var(--ui-bar-font-size, 12px);
+		font-family: var(--ui-font, system-ui, sans-serif);
+		box-shadow: var(--ui-bar-shadow, 0 1px 2px rgb(0 0 0 / 0.12));
+		max-width: 320px;
+		z-index: 1000;
+	}
+
+	:global(.ui-bar-tooltip-arrow) {
+		fill: var(--ui-bar-bg, #1a1a1a);
 	}
 </style>
