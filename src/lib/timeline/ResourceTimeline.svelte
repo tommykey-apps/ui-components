@@ -25,7 +25,17 @@
 		barHeight?: number;
 		/** lane 間の縦 gap(px、上下ぶん) */
 		laneGap?: number;
-		resourceColWidth?: number;
+		/**
+		 * Resource 列 (左 sticky rail) の幅。
+		 *   - `number` (px): 固定幅 (default 200)、 従来挙動 (#34 以前)
+		 *   - `'auto'`: 内容に合わせて自動 fit。 `resourceColMinWidth` / `resourceColMaxWidth` で上下限制御。
+		 * #34: 短名ばかりで余白多い / 長名で省略される問題への対処。
+		 */
+		resourceColWidth?: number | 'auto';
+		/** \`resourceColWidth='auto'\` の最小幅 px (default 100) */
+		resourceColMinWidth?: number;
+		/** \`resourceColWidth='auto'\` の最大幅 px (default 400)、 超過分は ellipsis */
+		resourceColMaxWidth?: number;
 		visibleCols?: number;
 		/** canvas 末端のスクロール余白(列数)。最遠 Assignment の endDate +α まで grid を描画する */
 		bufferCols?: number;
@@ -47,6 +57,8 @@
 		barHeight = 32,
 		laneGap = 4,
 		resourceColWidth = 200,
+		resourceColMinWidth = 100,
+		resourceColMaxWidth = 400,
 		visibleCols,
 		bufferCols = 7,
 		labels,
@@ -206,7 +218,9 @@
 	bind:this={timelineEl}
 	class="timeline"
 	style:--ui-row-height="{rowHeight}px"
-	style:--ui-resource-col-width="{resourceColWidth}px"
+	style:--ui-resource-col-min-width="{resourceColMinWidth}px"
+	style:--ui-resource-col-max-width="{resourceColMaxWidth}px"
+	style:--ui-resource-col-fixed-width={resourceColWidth === 'auto' ? null : `${resourceColWidth}px`}
 	style:--ui-canvas-width="{canvasWidth}px"
 	style:--ui-canvas-height="{canvasHeight}px"
 	style:--ui-col-width="{zoom.colWidth}px"
@@ -356,7 +370,22 @@
 	}
 	.timeline {
 		display: grid;
-		grid-template-columns: var(--ui-resource-col-width) auto;
+		/*
+		 * #34: resource 列の幅。 \`--ui-resource-col-fixed-width\` が定義されていれば固定幅、
+		 * 未定義 (= resourceColWidth='auto') なら \`minmax(min, fit-content(max))\` で内容に
+		 * fit する。 CSS variable の fallback で 1 行分岐、 JS \`$effect\` 不要。
+		 *
+		 * minmax / fit-content は Chrome 57+ / Firefox 70+ / Safari 12+ で全 modern browser 対応。
+		 */
+		grid-template-columns:
+			var(
+				--ui-resource-col-fixed-width,
+				minmax(
+					var(--ui-resource-col-min-width, 100px),
+					fit-content(var(--ui-resource-col-max-width, 400px))
+				)
+			)
+			auto;
 		grid-template-rows: auto auto;
 		font-family: var(--ui-font, system-ui, sans-serif);
 		color: var(--ui-fg, #1a1a1a);
@@ -419,9 +448,10 @@
 		z-index: 2;
 		display: flex;
 		flex-direction: column;
-		/* 長い resource 名で left rail が canvas 領域を侵食するのを防ぐため、
-		   既定で 200px 幅。消費アプリ側で `--ui-resource-col-width` で上書き可能。 */
-		width: var(--ui-resource-col-width, 200px);
+		/*
+		 * #34: explicit width を削除。 列幅は grid-template-columns の 1 列目 (固定 or fit-content)
+		 * を継承する。 sticky positioning は grid column 幅と独立に機能する。
+		 */
 		min-width: 0;
 		flex-shrink: 0;
 		border-right: 1px solid var(--ui-border, #e5e5e5);
