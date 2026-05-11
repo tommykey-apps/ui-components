@@ -49,6 +49,30 @@
 
 <Story name="Empty" args={{ zoom: ZOOMS.day, assignments: [] }} />
 
+<!--
+	#32: 長期間 bar (6 ヶ月) で label が viewport 外に隠れない (sticky) regression を visual
+	に確認する story。 visibleCols を絞って bar が viewport を必ず超えるよう設定。 horizontal
+	scroll しても label が左端に追従するのが期待挙動。
+-->
+<Story
+	name="LongDurationBar (#32)"
+	args={{
+		zoom: ZOOMS.day,
+		visibleCols: 14,
+		resources: [{ id: 'tanaka', name: '田中 太郎' }],
+		assignments: [
+			{
+				id: 'long-1',
+				resourceId: 'tanaka',
+				startDate: new Date(2026, 4, 1),
+				endDate: new Date(2026, 9, 31),
+				label: 'G社 6 ヶ月案件 (sticky label demo)',
+				color: '#4f46e5'
+			}
+		]
+	}}
+/>
+
 <Story
 	name="ManyResources"
 	args={{
