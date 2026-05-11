@@ -261,7 +261,20 @@
 		cursor: grabbing;
 	}
 
+	/**
+	 * #32: 長期間 bar (例: 6 ヶ月) が viewport 全幅を超える時、 ラベルが bar 先頭の
+	 * viewport 外に固定描画されると「どの project の bar か」 判定不能になる。
+	 *
+	 * `position: sticky` + `left: 8px` で viewport 左端 (= padding 内側) に追従させる。
+	 * bar 全体が viewport 内に入ると通常位置に戻る (CSS-only)。
+	 * Google Sheets / Linear / Microsoft Project Web 等の Gantt 系 UI と同じ pattern。
+	 *
+	 * `right: 8px` は bar の幅を上限とする (sticky で push されても bar からはみ出さない)。
+	 */
 	.label {
+		position: sticky;
+		left: 8px;
+		right: 8px;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;
