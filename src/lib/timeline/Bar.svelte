@@ -70,22 +70,6 @@
 		cursorAnchor = null;
 	}
 
-	/**
-	 * #42 hotfix: bits-ui の \`child({ props })\` には Tooltip 開閉用の
-	 * \`onpointerenter / pointermove / pointerleave\` が含まれる。 そのまま
-	 * \`onpointerenter={handlePointerEnter}\` で上書きすると bits-ui の hover 検出が壊れて
-	 * tooltip 自体が開かなくなる。 spread した props を渡しつつ自前ハンドラも呼ぶ helper。
-	 */
-	function composePointerHandler(
-		bitsHandler: unknown,
-		ownHandler: (e: PointerEvent) => void
-	): (e: PointerEvent) => void {
-		return (e) => {
-			if (typeof bitsHandler === 'function') (bitsHandler as (ev: PointerEvent) => void)(e);
-			ownHandler(e);
-		};
-	}
-
 	let liveLeft = $derived(
 		x + (mode === 'move' || mode === 'resize-start' ? dx : 0)
 	);
@@ -197,7 +181,25 @@
 	measure / ResizeObserver / `truncation.ts` も dead code として削除。
 -->
 <Tooltip.Root>
-	<Tooltip.Trigger>
+	<!--
+		#42 hotfix (#48): bits-ui 公式 pattern に従い、 自前のイベントハンドラは
+		\`Tooltip.Trigger\` component に直接渡す。 bits-ui の \`mergeProps\` が内部 hover
+		検出ハンドラと自動合成して child snippet の \`props\` に流してくれる。
+		https://next.bits-ui.com/docs/child-snippet
+	-->
+	<Tooltip.Trigger
+		role="button"
+		tabindex={0}
+		aria-label={assignment.label ?? assignment.id}
+		aria-describedby={ariaDescribedBy}
+		onpointerdown={handlePointerDownBody}
+		onpointerenter={handlePointerEnter}
+		onpointermove={handlePointerMove}
+		onpointerleave={handlePointerLeave}
+		onpointerup={handlePointerUp}
+		onpointercancel={handlePointerUp}
+		onkeydown={handleKeydown}
+	>
 		{#snippet child({ props })}
 			<div
 				{...props}
@@ -209,17 +211,6 @@
 				style:--bar-width="{liveWidth}px"
 				style:--bar-height="{height}px"
 				style:--bar-bg-override={assignment.color ?? null}
-				role="button"
-				tabindex="0"
-				aria-label={assignment.label ?? assignment.id}
-				aria-describedby={ariaDescribedBy}
-				onpointerdown={handlePointerDownBody}
-				onpointerenter={composePointerHandler(props.onpointerenter, handlePointerEnter)}
-				onpointermove={composePointerHandler(props.onpointermove, handlePointerMove)}
-				onpointerleave={composePointerHandler(props.onpointerleave, handlePointerLeave)}
-				onpointerup={handlePointerUp}
-				onpointercancel={handlePointerUp}
-				onkeydown={handleKeydown}
 			>
 				<span class="label">{assignment.label ?? ''}</span>
 
