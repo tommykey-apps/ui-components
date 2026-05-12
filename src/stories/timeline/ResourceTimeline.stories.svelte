@@ -50,12 +50,12 @@
 <Story name="Empty" args={{ zoom: ZOOMS.day, assignments: [] }} />
 
 <!--
-	#32: 長期間 bar (6 ヶ月) で label が viewport 外に隠れない (sticky) regression を visual
-	に確認する story。 visibleCols を絞って bar が viewport を必ず超えるよう設定。 horizontal
-	scroll しても label が左端に追従するのが期待挙動。
+	長期間 bar (6 ヶ月) で hover tooltip が viewport 内に表示されることを visual に確認する
+	story。 旧 #32 sticky label は #39 で revert され、 hover tooltip に役割を集約 (#39 →
+	#42 でカーソル追従)。 visibleCols を絞って bar が viewport を必ず超える設定。
 -->
 <Story
-	name="LongDurationBar (#32)"
+	name="LongDurationBar"
 	args={{
 		zoom: ZOOMS.day,
 		visibleCols: 14,
@@ -66,7 +66,7 @@
 				resourceId: 'tanaka',
 				startDate: new Date(2026, 4, 1),
 				endDate: new Date(2026, 9, 31),
-				label: 'G社 6 ヶ月案件 (sticky label demo)',
+				label: 'G社 6 ヶ月案件 (hover で tooltip がカーソルに追従)',
 				color: '#4f46e5'
 			}
 		]
