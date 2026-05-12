@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
 	import { Tooltip } from 'bits-ui';
-	import { isTruncated } from './truncation.js';
 	import type { Assignment, BarLabels } from './types.js';
 
 	type DragMode = 'idle' | 'move' | 'resize-start' | 'resize-end';
@@ -51,31 +49,6 @@
 	let startY = 0;
 	let dx = $state(0);
 	let dy = $state(0);
-
-	// hover tooltip 表示制御 (#23)。label が ellipsis で切れている時だけ title 属性を出す。
-	let labelEl = $state<HTMLSpanElement | undefined>();
-	let labelTruncated = $state(false);
-
-	async function measureTruncation(): Promise<void> {
-		await tick();
-		labelTruncated = isTruncated(labelEl);
-	}
-
-	$effect(() => {
-		// 依存: label 文字列変更時にも再測定 (要素サイズ不変ケース)。
-		void assignment.label;
-		if (!labelEl) return;
-		// font load 後の metrics 変化に追従。document.fonts は modern browser 全対応。
-		if (typeof document !== 'undefined' && document.fonts?.ready) {
-			document.fonts.ready.then(measureTruncation);
-		} else {
-			void measureTruncation();
-		}
-		// 以降の size 変更 (zoom / drag resize / 親 layout) を観測。
-		const ro = new ResizeObserver(() => void measureTruncation());
-		ro.observe(labelEl);
-		return () => ro.disconnect();
-	});
 
 	let liveLeft = $derived(
 		x + (mode === 'move' || mode === 'resize-start' ? dx : 0)
@@ -174,11 +147,15 @@
 </script>
 
 <!--
-	#28 / #23 を refactor: native `title` 属性を bits-ui Tooltip (floating-ui ベース) に置換。
-	`disabled={!labelTruncated}` で truncate されてない時は完全に mount しない (perf + 余計な popup 防止)。
-	Trigger は asChild snippet で既存 bar div に props をマージ、Portal で Gantt の overflow:hidden を回避。
+	#28 / #23: native `title` 属性を bits-ui Tooltip (floating-ui) に置換。 Trigger は
+	asChild snippet で既存 bar div に props をマージ、 Portal で Gantt の overflow:hidden を回避。
+
+	#39: 旧 `disabled={!labelTruncated}` (ellipsis 切れ時のみ tooltip) は、 viewport scroll で
+	bar が画面外に流れて label が見えないケースをカバーしてなかった (#32 sticky 撤回後に顕在化)。
+	常時 enabled にして hover でいつでも label 確認できるよう変更。 truncation 関連の state /
+	measure / ResizeObserver / `truncation.ts` も dead code として削除。
 -->
-<Tooltip.Root disabled={!labelTruncated}>
+<Tooltip.Root>
 	<Tooltip.Trigger>
 		{#snippet child({ props })}
 			<div
@@ -201,7 +178,7 @@
 				onpointercancel={handlePointerUp}
 				onkeydown={handleKeydown}
 			>
-				<span class="label" bind:this={labelEl}>{assignment.label ?? ''}</span>
+				<span class="label">{assignment.label ?? ''}</span>
 
 				{#if resizable}
 					<div
@@ -268,19 +245,12 @@
 	}
 
 	/**
-	 * #32: 長期間 bar (例: 6 ヶ月) が viewport 全幅を超える時、 ラベルが bar 先頭の
-	 * viewport 外に固定描画されると「どの project の bar か」 判定不能になる。
-	 *
-	 * `position: sticky` + `left: 8px` で viewport 左端 (= padding 内側) に追従させる。
-	 * bar 全体が viewport 内に入ると通常位置に戻る (CSS-only)。
-	 * Google Sheets / Linear / Microsoft Project Web 等の Gantt 系 UI と同じ pattern。
-	 *
-	 * `right: 8px` は bar の幅を上限とする (sticky で push されても bar からはみ出さない)。
+	 * #32 (sticky label) を revert (#39): `position: sticky` は \`.bar { position: absolute;
+	 * overflow: hidden; }\` の containing block 制約で viewport まで届かず spec 的に成立しない
+	 * ことが consumer (resource-planner) で判明。 通常の inline label に戻し、 long bar の
+	 * label 視認は hover tooltip (常時 enabled、 #39) で代替する。
 	 */
 	.label {
-		position: sticky;
-		left: 8px;
-		right: 8px;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;
