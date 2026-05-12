@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Tooltip } from 'bits-ui';
+	import { createCursorAnchor, type VirtualAnchor } from './cursor-anchor.js';
 	import type { Assignment, BarLabels } from './types.js';
 
 	type DragMode = 'idle' | 'move' | 'resize-start' | 'resize-end';
@@ -50,6 +51,25 @@
 	let dx = $state(0);
 	let dy = $state(0);
 
+	/**
+	 * #42: hover tooltip をカーソルに追従させる。
+	 * bits-ui default は trigger 要素 (bar) の中心が anchor になるが、 wide bar (例 6 ヶ月案件)
+	 * では bar の center が viewport 外/右端になり tooltip が画面端に貼りつく。
+	 *
+	 * floating-ui の virtual element pattern で pointermove ごとに anchor を作り直す。
+	 * Tooltip.Content の \`align="start" sideOffset / alignOffset\` で「カーソル右上」配置。
+	 */
+	let cursorAnchor = $state<VirtualAnchor | null>(null);
+
+	function handlePointerEnter(e: PointerEvent) {
+		if (e.pointerType !== 'mouse') return;
+		cursorAnchor = createCursorAnchor(e.clientX, e.clientY);
+	}
+
+	function handlePointerLeave() {
+		cursorAnchor = null;
+	}
+
 	let liveLeft = $derived(
 		x + (mode === 'move' || mode === 'resize-start' ? dx : 0)
 	);
@@ -94,6 +114,11 @@
 	}
 
 	function handlePointerMove(e: PointerEvent) {
+		// #42: drag 中でも hover 中でも cursor 座標を tooltip anchor として更新する。
+		// drag 中は tooltip を隠す挙動でも OK (bits-ui 自動)。 anchor 更新自体は安全。
+		if (e.pointerType === 'mouse' && cursorAnchor) {
+			cursorAnchor = createCursorAnchor(e.clientX, e.clientY);
+		}
 		if (mode === 'idle') return;
 		dx = e.clientX - startX;
 		dy = e.clientY - startY;
@@ -173,7 +198,9 @@
 				aria-label={assignment.label ?? assignment.id}
 				aria-describedby={ariaDescribedBy}
 				onpointerdown={handlePointerDownBody}
+				onpointerenter={handlePointerEnter}
 				onpointermove={handlePointerMove}
+				onpointerleave={handlePointerLeave}
 				onpointerup={handlePointerUp}
 				onpointercancel={handlePointerUp}
 				onkeydown={handleKeydown}
@@ -204,7 +231,22 @@
 		{/snippet}
 	</Tooltip.Trigger>
 	<Tooltip.Portal>
-		<Tooltip.Content class="ui-bar-tooltip" side="top" sideOffset={4}>
+		<!--
+			#42: customAnchor で virtual element (cursor 座標) を渡し、 floating-ui に
+			「bar 中心」ではなく「カーソル位置」を anchor として扱わせる。
+			- side="top" align="start" + sideOffset / alignOffset で「カーソル右上」配置
+			- cursorAnchor が null (keyboard focus / touch 等) のときは未指定 = bits-ui default
+			  (trigger 要素 anchor) に fallback
+			- flip / shift は floating-ui middleware に任せる (viewport 端で自動補正)
+		-->
+		<Tooltip.Content
+			class="ui-bar-tooltip"
+			side="top"
+			align="start"
+			sideOffset={12}
+			alignOffset={12}
+			customAnchor={cursorAnchor}
+		>
 			{assignment.label ?? ''}
 			<Tooltip.Arrow class="ui-bar-tooltip-arrow" />
 		</Tooltip.Content>
