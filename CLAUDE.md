@@ -94,3 +94,15 @@ Claude Code session 内で本 repo を編集する際は **必ず先にテスト
 - AI / 人間共通の discipline。RED → GREEN → REFACTOR で進める
 - `src/stories/` / `src/routes/` (publish 対象外) は対象外
 - consumer 側の同 setup: [resource-planner #92 / PR #93](https://github.com/tommykey-apps/resource-planner/pull/93)
+
+## コード品質 audit 自動化 (#76)
+
+コーディング後に静的解析 + code review が自動推奨される仕組みを Claude Code hooks + CI で組んでいる。
+
+- **PostToolUse hook** (`Edit|Write`): 編集ファイルを `.claude/state/dirty-files.log` に記録 + `dirty.flag` touch (`.claude/hooks/post-edit-touch.sh`)
+- **Stop hook**: dirty なら次ターンの additionalContext に「`/audit` 推奨」を soft 通知 (強制 block ではない)。 `.claude/state/dirty.flag` を `rm` で skip 可能
+- **`/audit` skill** (user-level): `pnpm check` / `pnpm test` / `knip` (unused) / `jscpd` (重複) / `madge` (循環) → 大規模変更時は `code-reviewer` agent spawn → dirty クリア
+- **`code-reviewer` agent** (user-level): Svelte 5 / SvelteKit / TS / bits-ui / floating-ui の公式 docs 準拠を厳しく見る、 「`unknown` キャスト / マジック数値 / 公式 docs 省略」 等の手癖を重点検出
+- **CI audit workflow** (`.github/workflows/audit.yaml`): ローカルバイパスされても PR で同 audit を実行 (`continue-on-error` で main CI と分離)
+
+audit 系コマンドは未 install でも `pnpm dlx` で動的取得。 速度重視なら devDeps 化。
