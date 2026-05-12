@@ -513,8 +513,9 @@
 		display: flex;
 		flex-direction: column;
 		/*
-		 * #34: explicit width を削除。 列幅は grid-template-columns の 1 列目 (固定 or fit-content)
-		 * を継承する。 sticky positioning は grid column 幅と独立に機能する。
+		 * 列幅は grid-template-columns の 1 列目 (\`var(--ui-resource-col-width, 200px)\`) を継承する。
+		 * #43 (v0.9.x) で auto-fit は JS 実測 + CSS 変数注入に移行 (track sizing 非依存)、
+		 * sticky positioning とは独立に動作する。
 		 */
 		min-width: 0;
 		flex-shrink: 0;
