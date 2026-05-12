@@ -14,6 +14,7 @@
 	import { ZOOMS } from './zoom.js';
 	import { resolveLabels } from './labels.js';
 	import { computeRailWidth } from './rail-width.js';
+	import { createCanvasMeasurer } from './measure-text.js';
 
 	type Props = {
 		resources: Resource[];
@@ -74,49 +75,46 @@
 	let timelineEl = $state<HTMLDivElement | undefined>();
 
 	/**
-	 * #43: resourceColWidth='auto' のとき、 各 \`.resource-row\` の scrollWidth を実測して
-	 * 最長名 + padding に合わせて rail width を決める (JS 測定 + CSS 変数 pattern)。
+	 * #43: resourceColWidth='auto' のとき、 各 resource 名の文字列幅を **Canvas \`measureText\`**
+	 * で実測 → \`computeRailWidth\` で clamp → CSS 変数 \`--ui-resource-col-width\` に流し込む。
 	 *
 	 * 過去 (#34, PR #161) は CSS Grid \`minmax(min, fit-content(max))\` で実装したが、
 	 * sticky 子要素との相互作用で **column 1 が 1px に collapse** する本番事故になった。
-	 * track sizing に頼らず JS 実測で確定値を流し込むことで sticky と完全互換になる。
+	 * track sizing に頼らず canvas で実測することで sticky と完全互換、 かつ DOM probe より
+	 * DOM 重複ゼロ / reflow 不要 (MDN / Erik Onarheim 推奨 pattern)。
+	 *
+	 * row padding (\`padding: 0 12px\` = 24px) は canvas 計測値に含まれないため別途加算する。
 	 */
-	// probe 自体に row と同じ padding (12px*2 = 24px) が入っているので、 ここでは
-	// 視覚的な breathing room のみ追加する
-	const RAIL_PADDING_PX = 8;
-	let nameEls = $state<(HTMLElement | undefined)[]>([]);
-	// 初期値はリテラル (Props default に揃える) — $effect 内で即座に上書きされる
+	const RAIL_PADDING_PX = 24;
+	// 初期値はリテラル (Props default min に揃える) — $effect 内で即座に上書きされる
 	let measuredRailWidth = $state(100);
 
 	$effect(() => {
 		if (resourceColWidth !== 'auto') return;
-		// reactive dep: resources 配列 / min / max が変わったら再走
-		void resources;
-		void resourceColMinWidth;
-		void resourceColMaxWidth;
+		// reactive deps: resources / min / max
+		const names = resources.map((r) => r.name);
+		const min = resourceColMinWidth;
+		const max = resourceColMaxWidth;
 
 		function remeasure() {
-			const widths = nameEls.filter((el): el is HTMLElement => !!el).map((el) => el.scrollWidth);
-			measuredRailWidth = computeRailWidth(widths, {
-				min: resourceColMinWidth,
-				max: resourceColMaxWidth,
-				padding: RAIL_PADDING_PX
-			});
+			if (!timelineEl) return;
+			// 実際の row から font を取って canvas に流す (text-overflow ellipsis を適用する前の
+			// 自然な文字列幅を測れる)。 row が無ければ timeline 自体の font に fallback。
+			const sample = timelineEl.querySelector('.resource-row');
+			const cs = getComputedStyle(sample ?? timelineEl);
+			const font = `${cs.fontStyle} ${cs.fontVariant} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+			const measure = createCanvasMeasurer(font);
+			if (!measure) return; // SSR / non-DOM
+			const widths = names.map((n) => measure(n));
+			measuredRailWidth = computeRailWidth(widths, { min, max, padding: RAIL_PADDING_PX });
 		}
 
 		remeasure();
 
-		// font load 後に metric が変わるので再測定 (\`document.fonts.ready\` is modern-browser-only)
+		// font load 完了で metric が変わるので再測定 (modern browsers only)
 		if (typeof document !== 'undefined' && document.fonts?.ready) {
 			document.fonts.ready.then(remeasure);
 		}
-
-		// resource 名 / row 高さの変化 (zoom / lane 増減) に追従
-		const ro = new ResizeObserver(remeasure);
-		for (const el of nameEls) {
-			if (el) ro.observe(el);
-		}
-		return () => ro.disconnect();
 	});
 
 	const resolvedRailWidth = $derived(
@@ -289,23 +287,12 @@
 	</div>
 
 	<aside class="resources" style:height="{canvasHeight}px">
-		{#each rowLayouts as row, i (row.resource.id)}
+		{#each rowLayouts as row (row.resource.id)}
 			<div
 				class="resource-row"
 				style:height="{row.height}px"
 				title={row.resource.name}
 			>{row.resource.name}</div>
-			<!--
-				#43: rail 幅を実測するための off-flow probe。 \`.resource-row\` 自体は grid track
-				の幅を継承する (= 循環依存で scrollWidth が track 幅になる) ので、 別途
-				\`position: absolute; visibility: hidden; white-space: nowrap;\` の span を
-				ぶら下げて **テキスト本来の幅** を取る。 \`aria-hidden\` で AT は無視。
-			-->
-			<span
-				class="resource-row-probe"
-				aria-hidden="true"
-				bind:this={nameEls[i]}
-			>{row.resource.name}</span>
 		{/each}
 	</aside>
 
@@ -524,18 +511,6 @@
 		text-overflow: ellipsis;
 	}
 
-	/* #43: 幅実測用 probe。 grid track の幅から独立に「テキスト本来の幅」を測る */
-	.resource-row-probe {
-		position: absolute;
-		visibility: hidden;
-		pointer-events: none;
-		white-space: nowrap;
-		padding: 0 12px;
-		font-size: var(--ui-row-font-size, 13px);
-		font-family: inherit;
-		box-sizing: border-box;
-		/* scrollWidth が natural text width になるよう width 制約を持たない */
-	}
 
 	.canvas {
 		grid-row: 2;
