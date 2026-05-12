@@ -1,5 +1,56 @@
 # @tommykey-apps/ui-components
 
+## 0.9.0
+
+### Minor Changes
+
+- 3937f6e: feat(ResourceTimeline): resource rail (左 sticky 列) を最長名に auto-fit する機能を \*\*JS 測定
+
+  - CSS 変数 pattern\*\* で再実装 (#43)。
+
+  過去 (#34, PR #161) の `minmax(min, fit-content(max))` 実装は子要素 `position: sticky` との
+  相互作用で column 1 が 1px に collapse する本番事故を起こした。 今回は CSS Grid の track sizing
+  に依存せず、 off-flow probe span でテキスト本来の幅を測定 → `computeRailWidth()` で clamp →
+  CSS 変数 `--ui-resource-col-width` に流し込む方式に切り替える。
+
+  - 新規 helper `computeRailWidth(widths, { min, max, padding })`: 純粋関数、 9 ケース緑
+  - `ResourceTimeline.svelte` に `nameEls` ref 配列 + ResizeObserver + `document.fonts.ready`
+    追従の `$effect` を追加
+  - `.resource-row-probe` (\`position: absolute; visibility: hidden;\`) を各行に並べてテキスト
+    本来の幅を測定 (grid track の幅を継承しない)
+  - `resourceColWidth='auto'` 利用時のみ JS 測定経路。 数値指定 (default 200) は静的 CSS 変数で
+    従来と完全同等
+  - 公開 API は不変、 `resourceColWidth: number | 'auto'` の signature 維持
+
+### Patch Changes
+
+- 7064389: refactor(ResourceTimeline): rail 幅測定を Canvas `measureText` に切り替え (#43 follow-up)。
+
+  PR #46 で導入した off-flow DOM probe (resource × 1 余分な span + ResizeObserver) を撤去し、
+  MDN / Erik Onarheim 推奨の Canvas `measureText` pattern に置き換える。
+
+  - 新規 `createCanvasMeasurer(font)` helper: module-scope canvas を再利用、 SSR safe (null fallback)
+  - DOM 重複ゼロ、 reflow 不要、 ResizeObserver 不要、 O(N) 同期測定
+  - font は `.resource-row` の computedStyle から shorthand を構築して canvas に流す
+  - `computeRailWidth()` clamp 純関数は再利用 (signature 不変)
+  - 公開 API 不変 (`resourceColWidth: number | 'auto'`)
+
+  Refs:
+
+  - https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/measureText
+  - https://erikonarheim.com/posts/canvas-text-metrics/
+
+- 460b4a7: fix(Bar): hover tooltip がカーソルではなく bar 中央 anchor になり、 wide bar (例 6 ヶ月案件) で
+  画面端に貼りつく問題を修正 (#42)。
+
+  - 新規 helper `createCursorAnchor(clientX, clientY)` で floating-ui virtual element を生成
+  - `Bar.svelte` の `pointerenter / pointermove / pointerleave` で cursor 座標を追跡し、
+    bits-ui `Tooltip.Content` の `customAnchor` prop に渡す
+  - `side="top" align="start" sideOffset={12} alignOffset={12}` でカーソル右上に追従
+  - keyboard focus / touch では `cursorAnchor` が null のまま、 bits-ui default
+    (trigger 要素 anchor) に fallback
+  - viewport 端では floating-ui の `shift` middleware が自動で位置補正
+
 ## 0.8.0
 
 ### Minor Changes
