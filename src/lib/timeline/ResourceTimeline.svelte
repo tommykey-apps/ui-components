@@ -83,11 +83,19 @@
 	 * track sizing に頼らず canvas で実測することで sticky と完全互換、 かつ DOM probe より
 	 * DOM 重複ゼロ / reflow 不要 (MDN / Erik Onarheim 推奨 pattern)。
 	 *
-	 * row padding (\`padding: 0 12px\` = 24px) は canvas 計測値に含まれないため別途加算する。
+	 * Padding / border (text → grid track 間の「chrome」) は \`getComputedStyle\` で
+	 * \`.resource-row\` (padding) + \`.resources\` (border) から読み取って加算する。
+	 * 静的な数値マジック (例: \`+ 24\`) は CSS 変更時に乖離するので避ける。
+	 * font hinting の subpixel 差を吸収するため 1px buffer も追加。
 	 */
-	const RAIL_PADDING_PX = 24;
+	const RAIL_SAFETY_PX = 1;
 	// 初期値はリテラル (Props default min に揃える) — $effect 内で即座に上書きされる
 	let measuredRailWidth = $state(100);
+
+	function readPx(value: string): number {
+		const n = parseFloat(value);
+		return Number.isFinite(n) ? n : 0;
+	}
 
 	$effect(() => {
 		if (resourceColWidth !== 'auto') return;
@@ -98,15 +106,33 @@
 
 		function remeasure() {
 			if (!timelineEl) return;
-			// 実際の row から font を取って canvas に流す (text-overflow ellipsis を適用する前の
-			// 自然な文字列幅を測れる)。 row が無ければ timeline 自体の font に fallback。
-			const sample = timelineEl.querySelector('.resource-row');
-			const cs = getComputedStyle(sample ?? timelineEl);
-			const font = `${cs.fontStyle} ${cs.fontVariant} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+			const row = timelineEl.querySelector<HTMLElement>('.resource-row');
+			const aside = timelineEl.querySelector<HTMLElement>('.resources');
+			if (!row || !aside) return; // 初回 render 前
+
+			// font: row の computed style から CSS \`font\` shorthand を構築 (canvas に流す)
+			const rowCS = getComputedStyle(row);
+			const font = `${rowCS.fontStyle} ${rowCS.fontVariant} ${rowCS.fontWeight} ${rowCS.fontSize} ${rowCS.fontFamily}`;
+
+			// chrome: text → grid track の間に挟まる padding + border の総和
+			// (row padding + aside border)。 マジック数値ではなく DOM から計算で robust に。
+			const asideCS = getComputedStyle(aside);
+			const chrome =
+				readPx(rowCS.paddingLeft) +
+				readPx(rowCS.paddingRight) +
+				readPx(rowCS.borderLeftWidth) +
+				readPx(rowCS.borderRightWidth) +
+				readPx(asideCS.borderLeftWidth) +
+				readPx(asideCS.borderRightWidth);
+
 			const measure = createCanvasMeasurer(font);
 			if (!measure) return; // SSR / non-DOM
 			const widths = names.map((n) => measure(n));
-			measuredRailWidth = computeRailWidth(widths, { min, max, padding: RAIL_PADDING_PX });
+			measuredRailWidth = computeRailWidth(widths, {
+				min,
+				max,
+				padding: chrome + RAIL_SAFETY_PX
+			});
 		}
 
 		remeasure();
