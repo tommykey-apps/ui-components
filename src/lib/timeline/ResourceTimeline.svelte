@@ -13,6 +13,7 @@
 	} from './projection.js';
 	import { ZOOMS } from './zoom.js';
 	import { resolveLabels } from './labels.js';
+	import { computeRailWidth } from './rail-width.js';
 
 	type Props = {
 		resources: Resource[];
@@ -71,6 +72,56 @@
 
 	// .timeline element ref(drag-to-pan で scrollLeft 制御)
 	let timelineEl = $state<HTMLDivElement | undefined>();
+
+	/**
+	 * #43: resourceColWidth='auto' のとき、 各 \`.resource-row\` の scrollWidth を実測して
+	 * 最長名 + padding に合わせて rail width を決める (JS 測定 + CSS 変数 pattern)。
+	 *
+	 * 過去 (#34, PR #161) は CSS Grid \`minmax(min, fit-content(max))\` で実装したが、
+	 * sticky 子要素との相互作用で **column 1 が 1px に collapse** する本番事故になった。
+	 * track sizing に頼らず JS 実測で確定値を流し込むことで sticky と完全互換になる。
+	 */
+	// probe 自体に row と同じ padding (12px*2 = 24px) が入っているので、 ここでは
+	// 視覚的な breathing room のみ追加する
+	const RAIL_PADDING_PX = 8;
+	let nameEls = $state<(HTMLElement | undefined)[]>([]);
+	// 初期値はリテラル (Props default に揃える) — $effect 内で即座に上書きされる
+	let measuredRailWidth = $state(100);
+
+	$effect(() => {
+		if (resourceColWidth !== 'auto') return;
+		// reactive dep: resources 配列 / min / max が変わったら再走
+		void resources;
+		void resourceColMinWidth;
+		void resourceColMaxWidth;
+
+		function remeasure() {
+			const widths = nameEls.filter((el): el is HTMLElement => !!el).map((el) => el.scrollWidth);
+			measuredRailWidth = computeRailWidth(widths, {
+				min: resourceColMinWidth,
+				max: resourceColMaxWidth,
+				padding: RAIL_PADDING_PX
+			});
+		}
+
+		remeasure();
+
+		// font load 後に metric が変わるので再測定 (\`document.fonts.ready\` is modern-browser-only)
+		if (typeof document !== 'undefined' && document.fonts?.ready) {
+			document.fonts.ready.then(remeasure);
+		}
+
+		// resource 名 / row 高さの変化 (zoom / lane 増減) に追従
+		const ro = new ResizeObserver(remeasure);
+		for (const el of nameEls) {
+			if (el) ro.observe(el);
+		}
+		return () => ro.disconnect();
+	});
+
+	const resolvedRailWidth = $derived(
+		resourceColWidth === 'auto' ? `${measuredRailWidth}px` : `${resourceColWidth}px`
+	);
 
 	// viewportStart / zoom が変わった時 scrollLeft を 0 にリセット(drag-pan 残留を消す)
 	$effect(() => {
@@ -218,9 +269,7 @@
 	bind:this={timelineEl}
 	class="timeline"
 	style:--ui-row-height="{rowHeight}px"
-	style:--ui-resource-col-min-width="{resourceColMinWidth}px"
-	style:--ui-resource-col-max-width="{resourceColMaxWidth}px"
-	style:--ui-resource-col-fixed-width={resourceColWidth === 'auto' ? null : `${resourceColWidth}px`}
+	style:--ui-resource-col-width={resolvedRailWidth}
 	style:--ui-canvas-width="{canvasWidth}px"
 	style:--ui-canvas-height="{canvasHeight}px"
 	style:--ui-col-width="{zoom.colWidth}px"
@@ -240,12 +289,23 @@
 	</div>
 
 	<aside class="resources" style:height="{canvasHeight}px">
-		{#each rowLayouts as row (row.resource.id)}
+		{#each rowLayouts as row, i (row.resource.id)}
 			<div
 				class="resource-row"
 				style:height="{row.height}px"
 				title={row.resource.name}
 			>{row.resource.name}</div>
+			<!--
+				#43: rail 幅を実測するための off-flow probe。 \`.resource-row\` 自体は grid track
+				の幅を継承する (= 循環依存で scrollWidth が track 幅になる) ので、 別途
+				\`position: absolute; visibility: hidden; white-space: nowrap;\` の span を
+				ぶら下げて **テキスト本来の幅** を取る。 \`aria-hidden\` で AT は無視。
+			-->
+			<span
+				class="resource-row-probe"
+				aria-hidden="true"
+				bind:this={nameEls[i]}
+			>{row.resource.name}</span>
 		{/each}
 	</aside>
 
@@ -371,21 +431,12 @@
 	.timeline {
 		display: grid;
 		/*
-		 * #34: resource 列の幅。 \`--ui-resource-col-fixed-width\` が定義されていれば固定幅、
-		 * 未定義 (= resourceColWidth='auto') なら \`minmax(min, fit-content(max))\` で内容に
-		 * fit する。 CSS variable の fallback で 1 行分岐、 JS \`$effect\` 不要。
-		 *
-		 * minmax / fit-content は Chrome 57+ / Firefox 70+ / Safari 12+ で全 modern browser 対応。
+		 * #43: resource 列の幅は JS 側で実測 → CSS 変数 \`--ui-resource-col-width\` に注入する。
+		 * 過去 (#34, PR #161) の \`minmax(min, fit-content(max))\` は子要素 \`position: sticky\`
+		 * との相互作用で column 1 が 1px に潰れる本番事故になったため、 track sizing に依存しない
+		 * 固定 px に切り替えた。 \`resourceColWidth='auto'\` の場合は ResizeObserver で追従する。
 		 */
-		grid-template-columns:
-			var(
-				--ui-resource-col-fixed-width,
-				minmax(
-					var(--ui-resource-col-min-width, 100px),
-					fit-content(var(--ui-resource-col-max-width, 400px))
-				)
-			)
-			auto;
+		grid-template-columns: var(--ui-resource-col-width, 200px) auto;
 		grid-template-rows: auto auto;
 		font-family: var(--ui-font, system-ui, sans-serif);
 		color: var(--ui-fg, #1a1a1a);
@@ -471,6 +522,19 @@
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
+	}
+
+	/* #43: 幅実測用 probe。 grid track の幅から独立に「テキスト本来の幅」を測る */
+	.resource-row-probe {
+		position: absolute;
+		visibility: hidden;
+		pointer-events: none;
+		white-space: nowrap;
+		padding: 0 12px;
+		font-size: var(--ui-row-font-size, 13px);
+		font-family: inherit;
+		box-sizing: border-box;
+		/* scrollWidth が natural text width になるよう width 制約を持たない */
 	}
 
 	.canvas {
