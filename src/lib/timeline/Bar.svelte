@@ -70,6 +70,22 @@
 		cursorAnchor = null;
 	}
 
+	/**
+	 * #42 hotfix: bits-ui の \`child({ props })\` には Tooltip 開閉用の
+	 * \`onpointerenter / pointermove / pointerleave\` が含まれる。 そのまま
+	 * \`onpointerenter={handlePointerEnter}\` で上書きすると bits-ui の hover 検出が壊れて
+	 * tooltip 自体が開かなくなる。 spread した props を渡しつつ自前ハンドラも呼ぶ helper。
+	 */
+	function composePointerHandler(
+		bitsHandler: unknown,
+		ownHandler: (e: PointerEvent) => void
+	): (e: PointerEvent) => void {
+		return (e) => {
+			if (typeof bitsHandler === 'function') (bitsHandler as (ev: PointerEvent) => void)(e);
+			ownHandler(e);
+		};
+	}
+
 	let liveLeft = $derived(
 		x + (mode === 'move' || mode === 'resize-start' ? dx : 0)
 	);
@@ -198,9 +214,9 @@
 				aria-label={assignment.label ?? assignment.id}
 				aria-describedby={ariaDescribedBy}
 				onpointerdown={handlePointerDownBody}
-				onpointerenter={handlePointerEnter}
-				onpointermove={handlePointerMove}
-				onpointerleave={handlePointerLeave}
+				onpointerenter={composePointerHandler(props.onpointerenter, handlePointerEnter)}
+				onpointermove={composePointerHandler(props.onpointermove, handlePointerMove)}
+				onpointerleave={composePointerHandler(props.onpointerleave, handlePointerLeave)}
 				onpointerup={handlePointerUp}
 				onpointercancel={handlePointerUp}
 				onkeydown={handleKeydown}
