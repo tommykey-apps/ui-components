@@ -172,13 +172,8 @@
 </script>
 
 <!--
-	#28 / #23: native `title` 属性を bits-ui Tooltip (floating-ui) に置換。 Trigger は
-	asChild snippet で既存 bar div に props をマージ、 Portal で Gantt の overflow:hidden を回避。
-
-	#39: 旧 `disabled={!labelTruncated}` (ellipsis 切れ時のみ tooltip) は、 viewport scroll で
-	bar が画面外に流れて label が見えないケースをカバーしてなかった (#32 sticky 撤回後に顕在化)。
-	常時 enabled にして hover でいつでも label 確認できるよう変更。 truncation 関連の state /
-	measure / ResizeObserver / `truncation.ts` も dead code として削除。
+	hover tooltip は常時 enabled (#39)、 Portal で Gantt overflow:hidden を回避 (#28)。
+	cursor follow は customAnchor + virtual element (#42)、 公式 mergeProps で hover 検出を温存 (#50)。
 -->
 <Tooltip.Root>
 	<!--
@@ -293,12 +288,8 @@
 		cursor: grabbing;
 	}
 
-	/**
-	 * #32 (sticky label) を revert (#39): `position: sticky` は \`.bar { position: absolute;
-	 * overflow: hidden; }\` の containing block 制約で viewport まで届かず spec 的に成立しない
-	 * ことが consumer (resource-planner) で判明。 通常の inline label に戻し、 long bar の
-	 * label 視認は hover tooltip (常時 enabled、 #39) で代替する。
-	 */
+	/* label は通常 inline (ellipsis 切れ)。 long bar の label 視認は hover tooltip (#39) で代替。
+	   sticky にしない理由は #32 / #39 参照。 */
 	.label {
 		white-space: nowrap;
 		text-overflow: ellipsis;

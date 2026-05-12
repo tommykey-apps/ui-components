@@ -75,18 +75,13 @@
 	let timelineEl = $state<HTMLDivElement | undefined>();
 
 	/**
-	 * #43: resourceColWidth='auto' のとき、 各 resource 名の文字列幅を **Canvas \`measureText\`**
-	 * で実測 → \`computeRailWidth\` で clamp → CSS 変数 \`--ui-resource-col-width\` に流し込む。
+	 * resourceColWidth='auto' のとき rail 幅を計算: 各 resource 名を Canvas
+	 * \`measureText\` (advance + actualBoundingBox の max) で実測 → \`computeRailWidth\`
+	 * で min/max clamp → CSS 変数 \`--ui-resource-col-width\` に流し込む。
 	 *
-	 * 過去 (#34, PR #161) は CSS Grid \`minmax(min, fit-content(max))\` で実装したが、
-	 * sticky 子要素との相互作用で **column 1 が 1px に collapse** する本番事故になった。
-	 * track sizing に頼らず canvas で実測することで sticky と完全互換、 かつ DOM probe より
-	 * DOM 重複ゼロ / reflow 不要 (MDN / Erik Onarheim 推奨 pattern)。
-	 *
-	 * Padding / border (text → grid track 間の「chrome」) は \`getComputedStyle\` で
-	 * \`.resource-row\` (padding) + \`.resources\` (border) から読み取って加算する。
-	 * 静的な数値マジック (例: \`+ 24\`) は CSS 変更時に乖離するので避ける。
-	 * font hinting の subpixel 差を吸収するため 1px buffer も追加。
+	 * text → grid track 間の chrome (padding + border) は \`getComputedStyle\` で
+	 * row / aside から実測し加算 (静的マジック数値だと CSS 変更時に乖離するため)。
+	 * 詳細経緯は #43 参照。
 	 */
 	const RAIL_SAFETY_PX = 1;
 	// 初期値はリテラル (Props default min に揃える) — $effect 内で即座に上書きされる
@@ -443,12 +438,8 @@
 	}
 	.timeline {
 		display: grid;
-		/*
-		 * #43: resource 列の幅は JS 側で実測 → CSS 変数 \`--ui-resource-col-width\` に注入する。
-		 * 過去 (#34, PR #161) の \`minmax(min, fit-content(max))\` は子要素 \`position: sticky\`
-		 * との相互作用で column 1 が 1px に潰れる本番事故になったため、 track sizing に依存しない
-		 * 固定 px に切り替えた。 \`resourceColWidth='auto'\` の場合は ResizeObserver で追従する。
-		 */
+		/* resource 列の幅は CSS 変数 \`--ui-resource-col-width\` で固定 (auto-fit 時も JS が実測値を代入)。
+		   sticky 子と track sizing の両立が不可なので minmax/fit-content は使わない (詳細 #43)。 */
 		grid-template-columns: var(--ui-resource-col-width, 200px) auto;
 		grid-template-rows: auto auto;
 		font-family: var(--ui-font, system-ui, sans-serif);

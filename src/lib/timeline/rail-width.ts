@@ -1,12 +1,9 @@
 /**
- * #43: resource rail (左 sticky 列) の幅を最長名に合わせて自動計算する pure helper。
+ * resource rail の幅を最長名に合わせて clamp する pure helper。
+ * 測定 (canvas / DOM) は呼び出し側に委譲、 ここは「widths → clamped px」 計算のみ。
  *
- * 過去 (#34, PR #161) は CSS Grid \`minmax(min, fit-content(max))\` で実装したが、
- * 子要素の \`position: sticky\` と track sizing の相互作用で **column が 1px に潰れる** 本番
- * 事故になった。 今回は JS で実測 → clamp → CSS 変数注入の pattern に切り替える。
- *
- * この関数自体は ResizeObserver / fonts.ready / DOM measure を呼び出し側に委譲し、
- * 「測定済み width 配列 → clamped px」 の純粋計算だけを担当する。
+ * sticky 子要素と CSS Grid track sizing が両立しないため track sizing には依存せず
+ * JS 実測 + CSS 変数注入で実現する設計 (詳細は #43)。
  */
 
 export type RailWidthOptions = {

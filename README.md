@@ -79,6 +79,76 @@ pnpm add @tommykey-apps/ui-components
 </script>
 ```
 
+## Available Components
+
+### `ResourceTimeline`
+
+Resource × 時間軸の Gantt-style timeline。 drag/resize / cursor follow tooltip / 左 sticky rail auto-fit に対応。
+
+```svelte
+<script lang="ts">
+  import { ResourceTimeline, ZOOMS, type Assignment } from '@tommykey-apps/ui-components';
+
+  const resources = [{ id: 'r1', name: '田中 太郎' }];
+  const assignments: Assignment[] = [
+    { id: 'a1', resourceId: 'r1', startDate: new Date(2026, 4, 1), endDate: new Date(2026, 4, 15), label: 'A社 案件', color: '#4f46e5' },
+  ];
+
+  let viewportStart = $state(new Date());
+</script>
+
+<ResourceTimeline
+  {resources}
+  {assignments}
+  bind:viewportStart
+  zoom={ZOOMS.day}
+  resourceColWidth="auto"
+  onMove={(updated) => console.log('moved', updated)}
+  onResize={(updated) => console.log('resized', updated)}
+/>
+```
+
+主要 props (詳細は `src/lib/timeline/types.ts` 参照):
+
+| prop | type | default | 用途 |
+|---|---|---|---|
+| `resources` | `Resource[]` | (required) | 行 (Resource = 人 / リソース) |
+| `assignments` | `Assignment[]` | (required) | 帯 (期間 + 行への紐付け) |
+| `viewportStart` | `Date` (`$bindable`) | 今日 | 表示開始日、 toolbar と双方向 binding |
+| `zoom` | `ZoomLevel` | `ZOOMS.day` | `ZOOMS.day` / `week` / `month` / `year` |
+| `resourceColWidth` | `number \| 'auto'` | `200` | 左 rail の幅。 `'auto'` で最長名に fit (Canvas measureText で実測) |
+| `resourceColMinWidth` / `resourceColMaxWidth` | `number` | `100` / `400` | `'auto'` 時の clamp 上下限 |
+| `labels` | `TimelineLabels` | 英語 default | i18n / aria 文字列の override |
+| `onMove` / `onResize` | `(a: Assignment) => void` | — | drag / resize 確定時 |
+
+### `TimelineToolbar`
+
+ResourceTimeline と組み合わせる zoom / navigation コントロール。
+
+```svelte
+<script lang="ts">
+  import { TimelineToolbar, ZOOMS } from '@tommykey-apps/ui-components';
+  let viewportStart = $state(new Date());
+  let zoom = $state(ZOOMS.day);
+</script>
+
+<TimelineToolbar bind:viewportStart bind:zoom />
+```
+
+主要 props (詳細は `src/lib/timeline/TimelineToolbar.svelte` 参照):
+
+| prop | type | 用途 |
+|---|---|---|
+| `viewportStart` | `Date` (`$bindable`) | ResourceTimeline と同期 |
+| `zoom` | `ZoomLevel` (`$bindable`) | 同上 |
+| `labels` / `ariaLabels` | `Partial<...>` | 「今日」「前へ」「次へ」「日 / 週 / 月 / 年」 等の文字列 |
+| `zooms` | `Record<string, ZoomLevel>` | カスタム zoom セット |
+
+### Tips
+
+- consumer 側の **`<Tooltip.Provider>` は不要** (library 内で self-contained)
+- CSS 変数で配色を上書き可: `--ui-bar-bg`, `--ui-bar-fg`, `--ui-header-bg` 等 (詳細は各 component の `<style>` 参照)
+
 ## ライブラリの構造
 
 - `src/lib/` — 公開コード(`@sveltejs/package` が `dist/` に変換)
