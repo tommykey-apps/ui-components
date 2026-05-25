@@ -33,3 +33,28 @@ describe('ResourceTimeline font-ready effect teardown (regression: #57)', () => 
 		expect(source).toMatch(/if\s*\(\s*!?cancelled\b/);
 	});
 });
+
+/**
+ * #85 / #68: consumer-facing event API 拡張
+ * - #85: onActivate prop を expose + Bar に forward
+ * - #68: onResize の callback signature に edge ('start' | 'end') を追加 (optional で backward-compat)
+ */
+describe('ResourceTimeline consumer API (regression: #85 / #68)', () => {
+	it('onActivate prop を Props に持つ (#85)', () => {
+		expect(source).toMatch(/onActivate\?\s*:\s*\(assignment:\s*Assignment\)\s*=>\s*void/);
+	});
+
+	it('onResize signature が edge を optional positional argument に持つ (#68)', () => {
+		expect(source).toMatch(
+			/onResize\?\s*:\s*\(assignment:\s*Assignment,\s*edge\?\s*:\s*['"]start['"]\s*\|\s*['"]end['"]\)\s*=>\s*void/
+		);
+	});
+
+	it('onResize の呼び出しで edge を渡す (#68)', () => {
+		expect(source).toMatch(/onResize\?\.\(updated,\s*(['"](?:start|end)['"]|edge)\)/);
+	});
+
+	it('Bar に onActivate を forward する (#85)', () => {
+		expect(source).toMatch(/onActivate=\{/);
+	});
+});

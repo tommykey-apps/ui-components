@@ -27,6 +27,12 @@
 		onKeyMove?: (units: number, rows: number) => void;
 		/** Alt + 矢印で resize (start / end edge を ±1 unit) */
 		onKeyResize?: (edge: 'start' | 'end', units: number) => void;
+		/**
+		 * #85: pointer click (drag に至らない) + keyboard (Enter / Space) で発火する unified
+		 * activation callback。 React Aria の onPress と同思想で input agnostic 命名。
+		 * consumer は detail dialog 起動などに使う。 resize handle 上の click では発火しない。
+		 */
+		onActivate?: (assignment: Assignment) => void;
 	};
 
 	let {
@@ -43,8 +49,13 @@
 		onDragEnd,
 		onResizeEnd,
 		onKeyMove,
-		onKeyResize
+		onKeyResize,
+		onActivate
 	}: Props = $props();
+
+	// #85: click vs drag 判定の閾値 (px)。 dnd-kit / react-dnd 等の慣例で 3-5px。
+	// 手ブレ・touch 微動を吸収しつつ意図的な drag は拾える値。
+	const CLICK_THRESHOLD_PX = 4;
 
 	// #59: partial 上書きを許す。 各 key で個別 fallback (default は英語)
 	const resolvedLabels = $derived({
@@ -142,7 +153,13 @@
 		dy = 0;
 
 		if (endedMode === 'move') {
-			onDragEnd?.(finalDx, finalDy);
+			// #85: drag threshold 以下なら click 扱いで onActivate を発火、 onDragEnd は呼ばない。
+			// 4px の遊びで手ブレ / touch 微動を吸収。 resize handle は別 mode なのでここに来ない。
+			if (Math.hypot(finalDx, finalDy) < CLICK_THRESHOLD_PX) {
+				onActivate?.(assignment);
+			} else {
+				onDragEnd?.(finalDx, finalDy);
+			}
 		} else if (endedMode === 'resize-start') {
 			onResizeEnd?.('start', finalDx);
 		} else if (endedMode === 'resize-end') {
@@ -174,6 +191,13 @@
 					e.preventDefault();
 					onKeyMove?.(0, 1);
 				}
+				break;
+			// #85: WAI-ARIA Button pattern (Enter / Space で activation)。
+			// pointer click と unified に onActivate を発火。 Space は page scroll を抑止。
+			case 'Enter':
+			case ' ':
+				e.preventDefault();
+				onActivate?.(assignment);
 				break;
 		}
 	}

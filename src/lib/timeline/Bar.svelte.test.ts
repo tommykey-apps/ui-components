@@ -81,3 +81,29 @@ describe('Bar tooltip cursor anchor (regression: #42 / #60)', () => {
 	});
 });
 
+/**
+ * #85: consumer (resource-planner) が bar クリック → detail dialog を起動する API。
+ * WAI-ARIA Button pattern に準じて pointer click + keyboard (Enter/Space) を unified に扱う。
+ * 命名は React Aria の onPress と同思想の `onActivate` (input agnostic)。
+ * - click threshold (Math.hypot < 4px) 以下は drag ではなく click とみなす (dnd-kit 等の慣例)
+ * - resize handle (mode !== 'move') では発火しない
+ */
+describe('Bar onActivate (regression: #85)', () => {
+	it('onActivate prop を Props に持つ', () => {
+		expect(source).toMatch(/onActivate\?\s*:\s*\(assignment:\s*Assignment\)\s*=>\s*void/);
+	});
+
+	it('handlePointerUp で click threshold (Math.hypot) を判定', () => {
+		// 数値リテラル or 定数識別子 (CLICK_THRESHOLD_PX 等) 両方を受け付ける
+		expect(source).toMatch(/Math\.hypot\([^)]*\)\s*<\s*[\w\d]+/);
+	});
+
+	it('handleKeydown で Enter / Space に対応', () => {
+		expect(source).toMatch(/case\s+['"]Enter['"]/);
+		expect(source).toMatch(/case\s+['"]\s['"]/);
+	});
+
+	it('keyboard activation 時に onActivate(assignment) を呼ぶ', () => {
+		expect(source).toMatch(/onActivate\?\.\(assignment\)/);
+	});
+});
