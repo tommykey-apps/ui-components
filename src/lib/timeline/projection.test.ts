@@ -209,6 +209,38 @@ describe('allocateLanes', () => {
 		expect(result.laneCount).toBe(0);
 		expect(result.lanes.size).toBe(0);
 	});
+
+	// #61: year zoom で同年内の非時間重複 bar が同 col に詰まる → 描画上 完全に被さって
+	// 後勝ち 1 件しか見えない。 zoom unit / origin を渡せば col 単位の重複判定にして
+	// 別 lane に積む (vertical stacking、 行高さ動的)。 day zoom では結果同じ。
+	describe('with { origin, unit } options (#61: col-based overlap)', () => {
+		const origin = new Date(2026, 0, 1);
+
+		it('year zoom: 同年内の 2 非重複 bar は別 lane に積む', () => {
+			const a = mk('a', new Date(2026, 0, 15), new Date(2026, 2, 31));
+			const b = mk('b', new Date(2026, 3, 15), new Date(2026, 5, 30));
+			const result = allocateLanes([a, b], { origin, unit: 'year' });
+			expect(result.laneCount).toBe(2);
+			expect(result.lanes.get('a')).toBe(0);
+			expect(result.lanes.get('b')).toBe(1);
+		});
+
+		it('year zoom: 別年の bar は col 重複しないので同 lane 0', () => {
+			const a = mk('a', new Date(2026, 0, 15), new Date(2026, 5, 30));
+			const b = mk('b', new Date(2027, 0, 15), new Date(2027, 5, 30));
+			const result = allocateLanes([a, b], { origin, unit: 'year' });
+			expect(result.laneCount).toBe(1);
+			expect(result.lanes.get('a')).toBe(0);
+			expect(result.lanes.get('b')).toBe(0);
+		});
+
+		it('day zoom: 既存の時間軸ベースと結果一致 (非重複は同 lane)', () => {
+			const a = mk('a', new Date(2026, 4, 4), new Date(2026, 4, 6));
+			const b = mk('b', new Date(2026, 4, 6), new Date(2026, 4, 8));
+			const result = allocateLanes([a, b], { origin, unit: 'day' });
+			expect(result.laneCount).toBe(1);
+		});
+	});
 });
 
 describe('weekOfMonth', () => {

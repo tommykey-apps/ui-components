@@ -142,13 +142,46 @@ export function weekOfMonth(date: Date): number {
  * - lanes: assignment.id → lane index (0-origin)
  * - laneCount: そのリソースで使われた lane 総数(行高さ計算用)
  */
-export function allocateLanes(assignments: Assignment[]): {
+export function allocateLanes(
+	assignments: Assignment[],
+	options?: { origin: Date; unit: ZoomUnit }
+): {
 	lanes: Map<string, number>;
 	laneCount: number;
 } {
 	const sorted = [...assignments].sort((a, b) => +a.startDate - +b.startDate);
-	const laneEnds: Date[] = [];
 	const lanes = new Map<string, number>();
+
+	function checkDuplicate(id: string) {
+		// #58: 公開 library として consumer が誤って重複 id を渡したとき
+		// silent 上書きされると気づけないので DEV mode で警告 (prod は無音)
+		if (import.meta.env.DEV && lanes.has(id)) {
+			console.warn(`[ResourceTimeline] duplicate assignment id: ${id}`);
+		}
+	}
+
+	if (options) {
+		// #61: col 単位で重複判定。 year/month zoom で時間軸非重複でも同 col に詰まる bar を
+		// 別 lane に積む (描画上の完全被覆を防ぐ)。 day zoom 等で結果は時間軸 ベースと等価。
+		const laneEndCols: number[] = [];
+		for (const a of sorted) {
+			const startCol = unitsBetween(options.origin, a.startDate, options.unit);
+			const endColExcl = endColExclusive(a.endDate, options.origin, options.unit);
+			let i = laneEndCols.findIndex((e) => e <= startCol);
+			if (i === -1) {
+				i = laneEndCols.length;
+				laneEndCols.push(endColExcl);
+			} else {
+				laneEndCols[i] = endColExcl;
+			}
+			checkDuplicate(a.id);
+			lanes.set(a.id, i);
+		}
+		return { lanes, laneCount: laneEndCols.length };
+	}
+
+	// backward-compatible (時間軸ベース)。 options 無指定の consumer 向け
+	const laneEnds: Date[] = [];
 	for (const a of sorted) {
 		let i = laneEnds.findIndex((e) => e <= a.startDate);
 		if (i === -1) {
@@ -157,11 +190,7 @@ export function allocateLanes(assignments: Assignment[]): {
 		} else {
 			laneEnds[i] = a.endDate;
 		}
-		// #58: 公開 library として consumer が誤って重複 id を渡したとき
-		// silent 上書きされると気づけないので DEV mode で警告 (prod は無音)
-		if (import.meta.env.DEV && lanes.has(a.id)) {
-			console.warn(`[ResourceTimeline] duplicate assignment id: ${a.id}`);
-		}
+		checkDuplicate(a.id);
 		lanes.set(a.id, i);
 	}
 	return { lanes, laneCount: laneEnds.length };
