@@ -169,6 +169,21 @@
 				break;
 		}
 	}
+
+	// #81: focusable role="separator" な handle が自身に focus を受けた時の resize 操作。
+	// body の handleKeydown は Alt 必須だが、 handle 上は edge が自明なので Alt 不要。
+	function handleHandleKeydown(edge: 'start' | 'end') {
+		return (e: KeyboardEvent) => {
+			const step = e.shiftKey ? 5 : 1;
+			if (e.key === 'ArrowLeft') {
+				e.preventDefault();
+				onKeyResize?.(edge, -step);
+			} else if (e.key === 'ArrowRight') {
+				e.preventDefault();
+				onKeyResize?.(edge, step);
+			}
+		};
+	}
 </script>
 
 <!--
@@ -210,23 +225,37 @@
 				<span class="label">{assignment.label ?? ''}</span>
 
 				{#if resizable}
+					<!-- #81: WAI-ARIA 上 focusable splitter separator は valid だが、 Svelte linter は
+					     separator を interactive role と認識しないため ignore directive で抑制 -->
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 					<div
 						class="handle handle-start"
 						role="separator"
+						tabindex={0}
+						aria-orientation="vertical"
+						aria-valuenow={0}
 						aria-label={labels.resizeStart}
 						onpointerdown={handlePointerDownLeft}
 						onpointermove={handlePointerMove}
 						onpointerup={handlePointerUp}
 						onpointercancel={handlePointerUp}
+						onkeydown={handleHandleKeydown('start')}
 					></div>
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 					<div
 						class="handle handle-end"
 						role="separator"
+						tabindex={0}
+						aria-orientation="vertical"
+						aria-valuenow={100}
 						aria-label={labels.resizeEnd}
 						onpointerdown={handlePointerDownRight}
 						onpointermove={handlePointerMove}
 						onpointerup={handlePointerUp}
 						onpointercancel={handlePointerUp}
+						onkeydown={handleHandleKeydown('end')}
 					></div>
 				{/if}
 			</div>
