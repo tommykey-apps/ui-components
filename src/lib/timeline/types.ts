@@ -27,14 +27,16 @@ export type SnapUnit = 'day' | 'week' | 'month';
 
 export type HeaderTier = {
 	unit: ZoomUnit;
-	/** date-fns format string。`format` が指定されていない場合に使用 */
-	fmt?: string;
-	/** カスタムフォーマッタ。指定されていれば `fmt` より優先 */
-	format?: (date: Date) => string;
+	/**
+	 * セル文字列を返す。 string なら date-fns `format(date, fmt)` で評価、
+	 * 関数なら直接 call。 #74: 旧 `fmt` / `format` 2 field を統合。
+	 */
+	fmt: string | ((date: Date) => string);
 };
 
 export type ZoomLevel = {
-	id: 'day' | 'week' | 'month' | 'year';
+	/** #74: `ZoomUnit` と完全一致するため alias で統一 */
+	id: ZoomUnit;
 	unit: ZoomUnit;
 	colWidth: number;
 	visibleCols: number;

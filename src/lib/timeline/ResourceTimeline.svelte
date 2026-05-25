@@ -259,7 +259,8 @@
 	type HeaderGroup = { value: string; span: number; startIdx: number };
 
 	function groupHeaderCells(cells: Date[], tier: HeaderTier): HeaderGroup[] {
-		const fn = tier.format ?? ((d: Date) => format(d, tier.fmt ?? ''));
+		// #74: tier.fmt は string | ((Date) => string) の union (旧 fmt / format 2 field を統合)
+		const fn = typeof tier.fmt === 'function' ? tier.fmt : (d: Date) => format(d, tier.fmt as string);
 		return cells.reduce<HeaderGroup[]>((acc, col, i) => {
 			const value = fn(col);
 			const last = acc[acc.length - 1];
