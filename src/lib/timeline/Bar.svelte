@@ -18,8 +18,9 @@
 		/**
 		 * #33: a11y 文字列 (resize handle の aria-label) を consumer の locale で override。
 		 * default は英語、 ResourceTimeline 経由で渡すのが通常 (consumer は \`<ResourceTimeline labels={...}>\`)。
+		 * #59: 部分指定可 (内部で個別 fallback)。 bits-ui 流の primitive 設計に合わせる。
 		 */
-		labels?: Required<BarLabels>;
+		labels?: BarLabels;
 		onDragEnd?: (dx: number, dy: number) => void;
 		onResizeEnd?: (edge: 'start' | 'end', dx: number) => void;
 		/** キーボード矢印で move (units, rows)。Shift で 5 倍 */
@@ -38,12 +39,18 @@
 		draggable = true,
 		resizable = true,
 		ariaDescribedBy,
-		labels = { resizeStart: 'Resize start', resizeEnd: 'Resize end' },
+		labels,
 		onDragEnd,
 		onResizeEnd,
 		onKeyMove,
 		onKeyResize
 	}: Props = $props();
+
+	// #59: partial 上書きを許す。 各 key で個別 fallback (default は英語)
+	const resolvedLabels = $derived({
+		resizeStart: labels?.resizeStart ?? 'Resize start',
+		resizeEnd: labels?.resizeEnd ?? 'Resize end'
+	});
 
 	let mode = $state<DragMode>('idle');
 	let startX = 0;
@@ -235,7 +242,7 @@
 						tabindex={0}
 						aria-orientation="vertical"
 						aria-valuenow={0}
-						aria-label={labels.resizeStart}
+						aria-label={resolvedLabels.resizeStart}
 						onpointerdown={handlePointerDownLeft}
 						onpointermove={handlePointerMove}
 						onpointerup={handlePointerUp}
@@ -250,7 +257,7 @@
 						tabindex={0}
 						aria-orientation="vertical"
 						aria-valuenow={100}
-						aria-label={labels.resizeEnd}
+						aria-label={resolvedLabels.resizeEnd}
 						onpointerdown={handlePointerDownRight}
 						onpointermove={handlePointerMove}
 						onpointerup={handlePointerUp}
