@@ -157,6 +157,11 @@ export function allocateLanes(assignments: Assignment[]): {
 		} else {
 			laneEnds[i] = a.endDate;
 		}
+		// #58: 公開 library として consumer が誤って重複 id を渡したとき
+		// silent 上書きされると気づけないので DEV mode で警告 (prod は無音)
+		if (import.meta.env.DEV && lanes.has(a.id)) {
+			console.warn(`[ResourceTimeline] duplicate assignment id: ${a.id}`);
+		}
 		lanes.set(a.id, i);
 	}
 	return { lanes, laneCount: laneEnds.length };

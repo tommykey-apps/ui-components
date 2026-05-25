@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	addUnits,
 	allocateLanes,
@@ -236,5 +236,38 @@ describe('weekOfMonth', () => {
 
 	it('mid-week date returns same as its Monday (Wed May 6 → W1)', () => {
 		expect(weekOfMonth(new Date(2026, 4, 6))).toBe(1);
+	});
+});
+
+describe('allocateLanes (#58: duplicate id dev warn)', () => {
+	let warnSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		warnSpy.mockRestore();
+	});
+
+	function mkAssignment(id: string, startMonth: number, endMonth: number): Assignment {
+		return {
+			id,
+			resourceId: 'r1',
+			startDate: new Date(2026, startMonth, 1),
+			endDate: new Date(2026, endMonth, 1)
+		};
+	}
+
+	it('unique ids: console.warn を呼ばない', () => {
+		allocateLanes([mkAssignment('a1', 0, 1), mkAssignment('a2', 2, 3)]);
+		expect(warnSpy).not.toHaveBeenCalled();
+	});
+
+	it('duplicate id: 重複 id を含む warning を出す', () => {
+		allocateLanes([mkAssignment('dup', 0, 1), mkAssignment('dup', 2, 3)]);
+		expect(warnSpy).toHaveBeenCalled();
+		const message = warnSpy.mock.calls[0]?.join(' ') ?? '';
+		expect(message).toContain('dup');
 	});
 });

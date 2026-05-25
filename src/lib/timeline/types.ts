@@ -4,6 +4,7 @@ export type Resource = {
 };
 
 export type Assignment = {
+	/** 一意 id。 同一 array 内で重複すると lane allocation が silent 上書きされる (DEV mode で console.warn)。 */
 	id: string;
 	resourceId: string;
 	/**
