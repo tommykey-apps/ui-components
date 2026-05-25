@@ -47,7 +47,16 @@
 		 */
 		labels?: TimelineLabels;
 		onMove?: (assignment: Assignment) => void;
-		onResize?: (assignment: Assignment) => void;
+		/**
+		 * #68: edge ('start' | 'end') を optional positional argument で受け取る。
+		 * 旧 consumer `(updated) => ...` は edge を無視するので backward-compatible。
+		 */
+		onResize?: (assignment: Assignment, edge?: 'start' | 'end') => void;
+		/**
+		 * #85: bar の pointer click + keyboard (Enter / Space) activation を unified に通知。
+		 * consumer 側 detail dialog 起動などに使う。
+		 */
+		onActivate?: (assignment: Assignment) => void;
 	};
 
 	let {
@@ -65,7 +74,8 @@
 		bufferCols = 7,
 		labels,
 		onMove,
-		onResize
+		onResize,
+		onActivate
 	}: Props = $props();
 
 	// SSR-stable な id (Svelte 5 公式)。 #56: ランダム生成だと hydration mismatch
@@ -388,13 +398,14 @@
 							if (newStart >= layout.assignment.endDate) return;
 							const updated = { ...layout.assignment, startDate: newStart };
 							statusMessage = L.status.resizeStart(fmtRange(updated));
-							onResize?.(updated);
+							// #68: edge を 2nd 引数で transparent に渡す
+							onResize?.(updated, 'start');
 						} else {
 							const newEnd = addUnits(layout.assignment.endDate, colDelta, zoom.unit);
 							if (newEnd <= layout.assignment.startDate) return;
 							const updated = { ...layout.assignment, endDate: newEnd };
 							statusMessage = L.status.resizeEnd(fmtRange(updated));
-							onResize?.(updated);
+							onResize?.(updated, 'end');
 						}
 					}}
 					onKeyMove={(units, rows) => {
@@ -422,15 +433,16 @@
 							if (newStart >= layout.assignment.endDate) return;
 							const updated = { ...layout.assignment, startDate: newStart };
 							statusMessage = L.status.keyResizeStart(fmtRange(updated));
-							onResize?.(updated);
+							onResize?.(updated, 'start');
 						} else {
 							const newEnd = addUnits(layout.assignment.endDate, units, zoom.unit);
 							if (newEnd <= layout.assignment.startDate) return;
 							const updated = { ...layout.assignment, endDate: newEnd };
 							statusMessage = L.status.keyResizeEnd(fmtRange(updated));
-							onResize?.(updated);
+							onResize?.(updated, 'end');
 						}
 					}}
+					onActivate={onActivate}
 				/>
 			{/each}
 	</div>

@@ -117,3 +117,16 @@
 		}))
 	}}
 />
+
+<!--
+	#85: onActivate (bar click + keyboard Enter/Space) を Storybook actions に流す story。
+	click と drag を threshold (4px) で見分けるため、 hover → mousedown → 即 mouseup で
+	onActivate が発火し、 5px 以上 drag したら onMove に切り替わる。
+-->
+<Story
+	name="ClickToActivate (#85)"
+	args={{
+		zoom: ZOOMS.day,
+		visibleCols: 14
+	}}
+/>
