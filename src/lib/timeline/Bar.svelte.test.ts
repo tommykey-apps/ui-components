@@ -62,3 +62,22 @@ describe('Bar labels prop typing (regression: #59)', () => {
 	});
 });
 
+/**
+ * #42 / #60: tooltip は floating-ui の virtual element (cursorAnchor) で cursor 追従する。
+ * - #42: customAnchor={cursorAnchor} で cursor 位置に anchor 固定、 wide bar でも viewport 端に
+ *   貼りつかない。
+ * - #60: pointerleave で cursorAnchor = null にすると bits-ui が trigger 要素 (bar) を anchor に
+ *   fallback し、 close transition 中の 1 RAF で tooltip が「画面左に飛ぶ」 ように描画される。
+ *   null にせず最後の cursor 位置で保持 → unmount で GC、 次回 pointerenter で上書きされる。
+ */
+describe('Bar tooltip cursor anchor (regression: #42 / #60)', () => {
+	it('Tooltip.Content は customAnchor={cursorAnchor} を渡す (#42 cursor 追従)', () => {
+		expect(source).toMatch(/customAnchor=\{cursorAnchor\}/);
+	});
+
+	it('pointerleave で cursorAnchor = null にしない (#60 close transition 中の飛び防止)', () => {
+		// handlePointerLeave は削除済み、 もしくは cursorAnchor 代入が無い形であること
+		expect(source).not.toMatch(/cursorAnchor\s*=\s*null/);
+	});
+});
+

@@ -73,9 +73,10 @@
 		cursorAnchor = createCursorAnchor(e.clientX, e.clientY);
 	}
 
-	function handlePointerLeave() {
-		cursorAnchor = null;
-	}
+	// #60: pointerleave で cursorAnchor を null に戻すと bits-ui が trigger 要素 (bar) を
+	// anchor に fallback して、 close transition 中の 1 RAF で tooltip が画面左に飛んで描画
+	// される。 anchor は最後の cursor 位置で保持しておき unmount で GC、 次回 pointerenter で
+	// createCursorAnchor が新 instance を作るので stale 参照問題なし。
 
 	let liveLeft = $derived(
 		x + (mode === 'move' || mode === 'resize-start' ? dx : 0)
@@ -212,7 +213,6 @@
 		onpointerdown={handlePointerDownBody}
 		onpointerenter={handlePointerEnter}
 		onpointermove={handlePointerMove}
-		onpointerleave={handlePointerLeave}
 		onpointerup={handlePointerUp}
 		onpointercancel={handlePointerUp}
 		onkeydown={handleKeydown}
