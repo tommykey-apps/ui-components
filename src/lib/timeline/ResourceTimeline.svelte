@@ -356,7 +356,8 @@
 	>
 		{#each rowLayouts as row (row.resource.id)}
 			<div class="grid-row" style:top="{row.rowTop}px" style:height="{row.height}px">
-				{#each columns as _col, ci (ci)}
+				<!-- #75: count しか必要としないので columns Date[] を消費せず canvasCols (number) で iterate -->
+				{#each { length: canvasCols } as _, ci (ci)}
 					<div class="grid-cell" style:left="{ci * zoom.colWidth}px" style:width="{zoom.colWidth}px"></div>
 				{/each}
 			</div>
