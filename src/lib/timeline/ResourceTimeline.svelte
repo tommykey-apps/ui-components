@@ -68,6 +68,10 @@
 		onResize
 	}: Props = $props();
 
+	// SSR-stable な id (Svelte 5 公式)。 #56: ランダム生成だと hydration mismatch
+	const uid = $props.id();
+	const statusId = `${uid}-status`;
+
 	// i18n labels を merge して常に全 key 揃った state にする (#33)
 	const L = $derived(resolveLabels(labels));
 
@@ -221,7 +225,6 @@
 	let canvasHeight = $derived(rowLayouts.reduce((sum, r) => sum + r.height, 0));
 
 	let statusMessage = $state('');
-	const statusId = `tt-status-${Math.random().toString(36).slice(2, 9)}`;
 
 	function fmtRange(a: Assignment): string {
 		const fmt = (d: Date) =>
