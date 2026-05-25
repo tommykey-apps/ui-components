@@ -46,3 +46,19 @@ describe('Bar resize handle ARIA (regression: #81)', () => {
 		}
 	});
 });
+
+/**
+ * #59: Bar は src/lib/index.ts から公開されているので consumer が直接 import 可能。
+ * しかし `labels?: Required<BarLabels>` だと部分上書きできず API として使いにくい。
+ * bits-ui 流の primitive style に合わせ、 partial OK + 内部 fallback に緩和する。
+ */
+describe('Bar labels prop typing (regression: #59)', () => {
+	it('labels prop は Required<BarLabels> を使わない (partial 許容)', () => {
+		expect(source).not.toMatch(/labels\?:\s*Required<BarLabels>/);
+	});
+
+	it('labels prop は BarLabels (任意キー optional) を受け付ける', () => {
+		expect(source).toMatch(/labels\?:\s*BarLabels/);
+	});
+});
+

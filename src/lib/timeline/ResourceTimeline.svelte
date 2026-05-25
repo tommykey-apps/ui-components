@@ -103,8 +103,12 @@
 		const min = resourceColMinWidth;
 		const max = resourceColMaxWidth;
 
+		// #57: document.fonts.ready.then() は cancel 不可。 unmount / 再 run 後に resolve
+		// した callback が $state write や DOM 参照を行うのを防ぐため teardown で flag を立てる
+		let cancelled = false;
+
 		function remeasure() {
-			if (!timelineEl) return;
+			if (cancelled || !timelineEl) return;
 			const row = timelineEl.querySelector<HTMLElement>('.resource-row');
 			const aside = timelineEl.querySelector<HTMLElement>('.resources');
 			if (!row || !aside) return; // 初回 render 前
@@ -140,6 +144,10 @@
 		if (typeof document !== 'undefined' && document.fonts?.ready) {
 			document.fonts.ready.then(remeasure);
 		}
+
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	const resolvedRailWidth = $derived(
