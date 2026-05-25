@@ -221,7 +221,11 @@
 		const result: RowLayout[] = [];
 		for (const r of resources) {
 			const rAssignments = assignments.filter((a) => a.resourceId === r.id);
-			const { lanes, laneCount } = allocateLanes(rAssignments);
+			// #61: col 単位で重複判定 (year/month zoom で同 col に詰まる bar を別 lane に積む)
+			const { lanes, laneCount } = allocateLanes(rAssignments, {
+				origin,
+				unit: zoom.unit
+			});
 			const used = Math.max(laneCount, 1);
 			const height = Math.max(rowHeight, used * (barHeight + laneGap) + laneGap);
 			result.push({ resource: r, rowTop: top, height, lanes, laneCount });

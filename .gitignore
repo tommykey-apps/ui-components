@@ -30,3 +30,7 @@ storybook-static
 .idea/
 *.swp
 *.swo
+
+# Playwright MCP repro artifacts (Claude Code debugging)
+.playwright-mcp/
+repro-*.png
