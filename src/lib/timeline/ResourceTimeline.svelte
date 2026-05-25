@@ -418,7 +418,11 @@
 							0,
 							Math.min(resources.length - 1, currentRowIndex + rows)
 						);
-						const newResourceId = resources[newRowIndex].id;
+						// #73 noUncheckedIndexedAccess: resources が空 (newRowIndex = -1) は実用上ない
+						// (Bar が render されないため) が、 静的解析上は guard が必要
+						const newResource = resources[newRowIndex];
+						if (!newResource) return;
+						const newResourceId = newResource.id;
 						if (units === 0 && newResourceId === layout.assignment.resourceId) return;
 						const updated: Assignment = {
 							...layout.assignment,
