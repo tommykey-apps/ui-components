@@ -453,7 +453,8 @@
 			{/each}
 	</div>
 
-	<div id={statusId} role="status" aria-live="polite" class="sr-only">{statusMessage}</div>
+	<!-- #70: aria-atomic="true" で SR が連続更新の中間値を skip せず最終値を atomic に announce -->
+	<div id={statusId} role="status" aria-live="polite" aria-atomic="true" class="sr-only">{statusMessage}</div>
 </div>
 </Tooltip.Provider>
 

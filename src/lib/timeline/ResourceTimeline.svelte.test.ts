@@ -58,3 +58,15 @@ describe('ResourceTimeline consumer API (regression: #85 / #68)', () => {
 		expect(source).toMatch(/onActivate=\{/);
 	});
 });
+
+/**
+ * #70: aria-live region に aria-atomic="true" を付与し、 連続更新時に SR が
+ * 中間値を skip して最終値だけ announce する挙動を担保 (WAI-ARIA APG 推奨)。
+ */
+describe('ResourceTimeline aria-live (regression: #70)', () => {
+	it('status region に aria-atomic="true" がある', () => {
+		expect(source).toMatch(
+			/role="status"[^>]*aria-atomic="true"|aria-atomic="true"[^>]*role="status"/
+		);
+	});
+});
