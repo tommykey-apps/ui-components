@@ -249,8 +249,8 @@
 	let statusMessage = $state('');
 
 	function fmtRange(a: Assignment): string {
-		const fmt = (d: Date) =>
-			`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		// #64: date-fns format に統一 (CLAUDE.md `date-fns v4` 規約)
+		const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
 		const resource = resources.find((r) => r.id === a.resourceId);
 		const name = resource?.name ?? a.resourceId;
 		return `${name}: ${a.label ?? a.id} ${fmt(a.startDate)} 〜 ${fmt(a.endDate)}`;
