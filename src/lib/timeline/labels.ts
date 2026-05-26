@@ -59,3 +59,35 @@ export function resolveLabels(overrides?: TimelineLabels): ResolvedTimelineLabel
 		status: { ...DEFAULT_TIMELINE_LABELS.status, ...overrides?.status }
 	};
 }
+
+/**
+ * #66: TimelineToolbar 用 labels の canonical 型。 inline 定義から labels.ts に集約。
+ *
+ * `labels` (visible button text) と `ariaLabels` (icon-only button の aria-label) を
+ * TimelineToolbar prop で 2 つ受けるが、 type は同一 → consumer が覚える型は 1 つだけ。
+ *
+ * a11y best practice (WAI-ARIA APG): icon-only button (prev/next) は aria-label 必須、
+ * text button (today/zoom) は visible text が name 兼任。 1 type で両者を表現し、
+ * consumer が用途に応じて該当 key だけ override する。
+ */
+export type ToolbarLabels = {
+	today?: string;
+	prev?: string;
+	next?: string;
+	zoom?: string;
+	zoomDay?: string;
+	zoomWeek?: string;
+	zoomMonth?: string;
+	zoomYear?: string;
+};
+
+export const DEFAULT_TOOLBAR_LABELS: Required<ToolbarLabels> = {
+	today: 'Today',
+	prev: 'Previous',
+	next: 'Next',
+	zoom: 'Zoom',
+	zoomDay: 'Day',
+	zoomWeek: 'Week',
+	zoomMonth: 'Month',
+	zoomYear: 'Year'
+};
