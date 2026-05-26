@@ -15,6 +15,7 @@
 	import { resolveLabels } from './labels.js';
 	import { computeRailWidth } from './rail-width.js';
 	import { createCanvasMeasurer } from './measure-text.js';
+	import { createPointerDrag } from './pointer-drag.js';
 
 	type Props = {
 		resources: Resource[];
@@ -171,43 +172,32 @@
 		if (timelineEl) timelineEl.scrollLeft = 0;
 	});
 
-	// drag-to-pan 状態
+	// drag-to-pan 状態 (#67: lifecycle は pointer-drag helper、 panActive のみ template 反映用)
 	const PAN_THRESHOLD = 5;
-	let panStartX = 0;
 	let panStartScrollLeft = 0;
 	let panActive = $state(false);
-	let panPointerId: number | null = null;
 
-	function handleCanvasPointerDown(e: PointerEvent) {
-		if (e.button !== 0 || !timelineEl) return;
-		const target = e.target as HTMLElement;
-		// Bar 上は除外(既存 Bar drag に委譲)
-		if (target.closest('.bar')) return;
-		panStartX = e.clientX;
-		panStartScrollLeft = timelineEl.scrollLeft;
-		panPointerId = e.pointerId;
-		try {
-			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-		} catch {
-			// synthetic event 等で未対応の場合は無視
+	const canvasPan = createPointerDrag({
+		onStart(e) {
+			if (!timelineEl) return false;
+			const target = e.target as HTMLElement;
+			// Bar 上は除外 (Bar の drag に委譲)
+			if (target.closest('.bar')) return false;
+			panStartScrollLeft = timelineEl.scrollLeft;
+		},
+		onMove(dx) {
+			if (!timelineEl) return;
+			if (!panActive && Math.abs(dx) >= PAN_THRESHOLD) {
+				panActive = true;
+			}
+			if (panActive) {
+				timelineEl.scrollLeft = panStartScrollLeft - dx;
+			}
+		},
+		onEnd() {
+			panActive = false;
 		}
-	}
-
-	function handleCanvasPointerMove(e: PointerEvent) {
-		if (!timelineEl || panPointerId === null) return;
-		const dx = e.clientX - panStartX;
-		if (!panActive && Math.abs(dx) >= PAN_THRESHOLD) {
-			panActive = true;
-		}
-		if (panActive) {
-			timelineEl.scrollLeft = panStartScrollLeft - dx;
-		}
-	}
-
-	function handleCanvasPointerUp() {
-		panActive = false;
-		panPointerId = null;
-	}
+	});
 
 	let visibleColsResolved = $derived(visibleCols ?? zoom.visibleCols);
 	let origin = $derived(startOfUnit(viewportStart, zoom.unit));
@@ -350,10 +340,10 @@
 		aria-label={L.canvas.region}
 		style:width="{canvasWidth}px"
 		style:height="{canvasHeight}px"
-		onpointerdown={handleCanvasPointerDown}
-		onpointermove={handleCanvasPointerMove}
-		onpointerup={handleCanvasPointerUp}
-		onpointercancel={handleCanvasPointerUp}
+		onpointerdown={canvasPan.onPointerDown}
+		onpointermove={canvasPan.onPointerMove}
+		onpointerup={canvasPan.onPointerUp}
+		onpointercancel={canvasPan.onPointerUp}
 	>
 		{#each rowLayouts as row (row.resource.id)}
 			<div class="grid-row" style:top="{row.rowTop}px" style:height="{row.height}px">
