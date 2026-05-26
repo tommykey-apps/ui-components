@@ -50,9 +50,11 @@
 <Story name="Empty" args={{ zoom: ZOOMS.day, assignments: [] }} />
 
 <!--
-	長期間 bar (6 ヶ月) で hover tooltip が viewport 内に表示されることを visual に確認する
-	story。 旧 #32 sticky label は #39 で revert され、 hover tooltip に役割を集約 (#39 →
-	#42 でカーソル追従)。 visibleCols を絞って bar が viewport を必ず超える設定。
+	#84: 長期間 bar (6 ヶ月) で **sticky label** が rail 右端に貼り付き、 viewport 内で
+	常時 project 名が読める挙動を visual に確認する story。 #32 → #39 → #84 の経緯:
+	#32 で sticky 導入 → #39 で revert (実は `.bar { overflow: hidden }` を外せば実現可能、
+	判断誤り) → #84 で Ben Nadel pattern (CSS sticky + max-width) で再実装。 hover tooltip は廃止。
+	visibleCols を絞って bar が viewport を必ず超える設定。
 -->
 <Story
 	name="LongDurationBar"
@@ -66,7 +68,7 @@
 				resourceId: 'tanaka',
 				startDate: new Date(2026, 4, 1),
 				endDate: new Date(2026, 9, 31),
-				label: 'G社 6 ヶ月案件 (hover で tooltip がカーソルに追従)',
+				label: 'G社 6 ヶ月案件 (sticky label で常時可視)',
 				color: '#4f46e5'
 			}
 		]
