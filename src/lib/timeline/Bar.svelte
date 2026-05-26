@@ -167,6 +167,22 @@
 		}
 	}
 
+	/**
+	 * #72: keyboard modifier matrix (Bar body focus 時)。
+	 *
+	 * | Key         | (none)              | Alt                       | Shift               | Shift+Alt          |
+	 * |-------------|---------------------|---------------------------|---------------------|--------------------|
+	 * | ArrowLeft   | move -1 col         | resize start -1           | move -5 cols        | resize start -1    |
+	 * | ArrowRight  | move +1 col         | resize end +1             | move +5 cols        | resize end +1      |
+	 * | ArrowUp     | (no-op, native)     | (no-op, native)           | move -1 row         | move -1 row        |
+	 * | ArrowDown   | (no-op, native)     | (no-op, native)           | move +1 row         | move +1 row        |
+	 * | Enter / Space | onActivate        | onActivate                | onActivate          | onActivate         |
+	 *
+	 * 縦方向 (ArrowUp/Down) は Shift 必須 = 「明示的に行移動」 する場合のみ実行。
+	 * Shift 無し時はブラウザ native (scroll 等) を残す。 Alt+ArrowUp/Down はあえて
+	 * 「縦方向 resize」 を定義しない (概念的に存在しない) ため native default 通過、
+	 * WAI-ARIA APG の「desktop convention に従う」 方針。
+	 */
 	function handleKeydown(e: KeyboardEvent) {
 		const step = e.shiftKey ? 5 : 1;
 		switch (e.key) {
