@@ -276,6 +276,8 @@
 					     separator を interactive role と認識しないため ignore directive で抑制 -->
 					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+					<!-- #63: handle の pointerdown で setPointerCapture を取れば pointermove/up/cancel
+					     は capture 経由で親 bar の listener に届く。 handle に redundant listener 不要 -->
 					<div
 						class="handle handle-start"
 						role="separator"
@@ -284,9 +286,6 @@
 						aria-valuenow={0}
 						aria-label={resolvedLabels.resizeStart}
 						onpointerdown={handlePointerDownLeft}
-						onpointermove={handlePointerMove}
-						onpointerup={handlePointerUp}
-						onpointercancel={handlePointerUp}
 						onkeydown={handleHandleKeydown('start')}
 					></div>
 					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -299,9 +298,6 @@
 						aria-valuenow={100}
 						aria-label={resolvedLabels.resizeEnd}
 						onpointerdown={handlePointerDownRight}
-						onpointermove={handlePointerMove}
-						onpointerup={handlePointerUp}
-						onpointercancel={handlePointerUp}
 						onkeydown={handleHandleKeydown('end')}
 					></div>
 				{/if}

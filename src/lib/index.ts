@@ -26,4 +26,8 @@ export type {
 	ZoomLevel,
 	ZoomUnit
 } from './timeline/types.js';
-export { DEFAULT_TIMELINE_LABELS } from './timeline/labels.js';
+export {
+	DEFAULT_TIMELINE_LABELS,
+	DEFAULT_TOOLBAR_LABELS,
+	type ToolbarLabels
+} from './timeline/labels.js';

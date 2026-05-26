@@ -58,23 +58,8 @@ export type BarLabels = {
 /**
  * ResourceTimeline 全体に渡る i18n 文字列。 consumer の locale に追従させる場合は
  * \`<ResourceTimeline labels={...}>\` で override する。 default は **英語**。
+ *
+ * #65: canonical 型は `labels.ts` の `ResolvedTimelineLabels` で、 これは DeepPartial 派生。
+ * 2 重定義を避けるため re-export のみ。
  */
-export type TimelineLabels = {
-	bar?: BarLabels;
-	canvas?: {
-		/** \`<div role="region" aria-label="...">\` */
-		region?: string;
-	};
-	/**
-	 * 操作後に aria-live="polite" な status 要素に流れる文言。 receive する引数は
-	 * 「YYYY-MM-DD 〜 YYYY-MM-DD」 形式の range 文字列。 consumer 側で template を組む。
-	 */
-	status?: {
-		move?: (range: string) => string;
-		resizeStart?: (range: string) => string;
-		resizeEnd?: (range: string) => string;
-		keyMove?: (range: string) => string;
-		keyResizeStart?: (range: string) => string;
-		keyResizeEnd?: (range: string) => string;
-	};
-};
+export type { TimelineLabels, ResolvedTimelineLabels } from './labels.js';

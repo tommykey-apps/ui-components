@@ -3,17 +3,8 @@
 	import { ZOOMS } from './zoom.js';
 	import type { ZoomLevel } from './types.js';
 	import { ICON_CHEVRON_LEFT, ICON_CHEVRON_RIGHT } from './icons.js';
-
-	type ToolbarLabels = {
-		today?: string;
-		prev?: string;
-		next?: string;
-		zoom?: string;
-		zoomDay?: string;
-		zoomWeek?: string;
-		zoomMonth?: string;
-		zoomYear?: string;
-	};
+	// #66: ToolbarLabels / DEFAULT_TOOLBAR_LABELS を labels.ts に集約 (inline 定義から移動)
+	import { DEFAULT_TOOLBAR_LABELS, type ToolbarLabels } from './labels.js';
 
 	type Props = {
 		viewportStart: Date;
@@ -47,18 +38,7 @@
 		onZoomChange
 	}: Props = $props();
 
-	const DEFAULT_LABELS: Required<ToolbarLabels> = {
-		today: 'Today',
-		prev: 'Previous',
-		next: 'Next',
-		zoom: 'Zoom',
-		zoomDay: 'Day',
-		zoomWeek: 'Week',
-		zoomMonth: 'Month',
-		zoomYear: 'Year'
-	};
-
-	let L = $derived({ ...DEFAULT_LABELS, ...(labels ?? {}) });
+	let L = $derived({ ...DEFAULT_TOOLBAR_LABELS, ...(labels ?? {}) });
 	let A = $derived({ ...L, ...(ariaLabels ?? {}) });
 	let resolvedStep = $derived(step ?? zoom.visibleCols);
 
