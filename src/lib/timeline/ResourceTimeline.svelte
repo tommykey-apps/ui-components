@@ -246,6 +246,43 @@
 		return `${name}: ${a.label ?? a.id} ${fmt(a.startDate)} 〜 ${fmt(a.endDate)}`;
 	}
 
+	/**
+	 * #62: Bar の 4 callback (drag / resize / keyMove / keyResize) で重複していた
+	 * Assignment 構築 + bounds check を helper に集約。 移動軸 (move) と resize 軸を
+	 * 分けることで各 helper の関心事が明確 (AHA 原則 = 過剰抽象化を避ける部分集約)。
+	 *
+	 * 戻り値 `null` は no-op (delta が 0 + 行変化なし、 或いは resize で start/end が
+	 * 反転するケース)。 caller 側で early return。
+	 */
+	function buildMovedAssignment(
+		base: Assignment,
+		opts: { colDelta: number; newResourceId: string }
+	): Assignment | null {
+		if (opts.colDelta === 0 && opts.newResourceId === base.resourceId) return null;
+		return {
+			...base,
+			resourceId: opts.newResourceId,
+			startDate: addUnits(base.startDate, opts.colDelta, zoom.unit),
+			endDate: addUnits(base.endDate, opts.colDelta, zoom.unit)
+		};
+	}
+
+	function buildResizedAssignment(
+		base: Assignment,
+		edge: 'start' | 'end',
+		colDelta: number
+	): Assignment | null {
+		if (colDelta === 0) return null;
+		if (edge === 'start') {
+			const newStart = addUnits(base.startDate, colDelta, zoom.unit);
+			if (newStart >= base.endDate) return null;
+			return { ...base, startDate: newStart };
+		}
+		const newEnd = addUnits(base.endDate, colDelta, zoom.unit);
+		if (newEnd <= base.startDate) return null;
+		return { ...base, endDate: newEnd };
+	}
+
 	type HeaderGroup = { value: string; span: number; startIdx: number };
 
 	function groupHeaderCells(cells: Date[], tier: HeaderTier): HeaderGroup[] {
@@ -366,39 +403,26 @@
 					labels={L.bar}
 					onDragEnd={(dx, dy) => {
 						const colDelta = Math.round(dx / zoom.colWidth);
-						// 行跨ぎ判定: y + dy がどの rowLayout の範囲に入るかで決める(等高 row 前提の Math.round は不可)
+						// 行跨ぎ判定: y + dy がどの rowLayout の範囲に入るかで決める (等高 row 前提の Math.round は不可)
 						const targetY = layout.y + dy;
 						const newRow = rowLayouts.find(
 							(r) => targetY >= r.rowTop && targetY < r.rowTop + r.height
 						);
 						const newResourceId = newRow?.resource.id ?? layout.assignment.resourceId;
-						if (colDelta === 0 && newResourceId === layout.assignment.resourceId) return;
-						const updated: Assignment = {
-							...layout.assignment,
-							resourceId: newResourceId,
-							startDate: addUnits(layout.assignment.startDate, colDelta, zoom.unit),
-							endDate: addUnits(layout.assignment.endDate, colDelta, zoom.unit)
-						};
+						const updated = buildMovedAssignment(layout.assignment, { colDelta, newResourceId });
+						if (!updated) return;
 						statusMessage = L.status.move(fmtRange(updated));
 						onMove?.(updated);
 					}}
 					onResizeEnd={(edge, dx) => {
 						const colDelta = Math.round(dx / zoom.colWidth);
-						if (colDelta === 0) return;
-						if (edge === 'start') {
-							const newStart = addUnits(layout.assignment.startDate, colDelta, zoom.unit);
-							if (newStart >= layout.assignment.endDate) return;
-							const updated = { ...layout.assignment, startDate: newStart };
-							statusMessage = L.status.resizeStart(fmtRange(updated));
-							// #68: edge を 2nd 引数で transparent に渡す
-							onResize?.(updated, 'start');
-						} else {
-							const newEnd = addUnits(layout.assignment.endDate, colDelta, zoom.unit);
-							if (newEnd <= layout.assignment.startDate) return;
-							const updated = { ...layout.assignment, endDate: newEnd };
-							statusMessage = L.status.resizeEnd(fmtRange(updated));
-							onResize?.(updated, 'end');
-						}
+						const updated = buildResizedAssignment(layout.assignment, edge, colDelta);
+						if (!updated) return;
+						statusMessage = (edge === 'start' ? L.status.resizeStart : L.status.resizeEnd)(
+							fmtRange(updated)
+						);
+						// #68: edge を 2nd 引数で transparent に渡す
+						onResize?.(updated, edge);
 					}}
 					onKeyMove={(units, rows) => {
 						const currentRowIndex = resources.findIndex(
@@ -408,35 +432,24 @@
 							0,
 							Math.min(resources.length - 1, currentRowIndex + rows)
 						);
-						// #73 noUncheckedIndexedAccess: resources が空 (newRowIndex = -1) は実用上ない
-						// (Bar が render されないため) が、 静的解析上は guard が必要
+						// #73 noUncheckedIndexedAccess: 実用上 resources は非空 (Bar 描画前提) だが静的解析 guard
 						const newResource = resources[newRowIndex];
 						if (!newResource) return;
-						const newResourceId = newResource.id;
-						if (units === 0 && newResourceId === layout.assignment.resourceId) return;
-						const updated: Assignment = {
-							...layout.assignment,
-							resourceId: newResourceId,
-							startDate: addUnits(layout.assignment.startDate, units, zoom.unit),
-							endDate: addUnits(layout.assignment.endDate, units, zoom.unit)
-						};
+						const updated = buildMovedAssignment(layout.assignment, {
+							colDelta: units,
+							newResourceId: newResource.id
+						});
+						if (!updated) return;
 						statusMessage = L.status.keyMove(fmtRange(updated));
 						onMove?.(updated);
 					}}
 					onKeyResize={(edge, units) => {
-						if (edge === 'start') {
-							const newStart = addUnits(layout.assignment.startDate, units, zoom.unit);
-							if (newStart >= layout.assignment.endDate) return;
-							const updated = { ...layout.assignment, startDate: newStart };
-							statusMessage = L.status.keyResizeStart(fmtRange(updated));
-							onResize?.(updated, 'start');
-						} else {
-							const newEnd = addUnits(layout.assignment.endDate, units, zoom.unit);
-							if (newEnd <= layout.assignment.startDate) return;
-							const updated = { ...layout.assignment, endDate: newEnd };
-							statusMessage = L.status.keyResizeEnd(fmtRange(updated));
-							onResize?.(updated, 'end');
-						}
+						const updated = buildResizedAssignment(layout.assignment, edge, units);
+						if (!updated) return;
+						statusMessage = (edge === 'start' ? L.status.keyResizeStart : L.status.keyResizeEnd)(
+							fmtRange(updated)
+						);
+						onResize?.(updated, edge);
 					}}
 					onActivate={onActivate}
 				/>
