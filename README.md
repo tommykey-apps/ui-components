@@ -144,6 +144,17 @@ ResourceTimeline と組み合わせる zoom / navigation コントロール。
 | `labels` / `ariaLabels` | `Partial<...>` | 「今日」「前へ」「次へ」「日 / 週 / 月 / 年」 等の文字列 |
 | `zooms` | `Record<string, ZoomLevel>` | カスタム zoom セット |
 
+### Low-level primitives (advanced)
+
+`ResourceTimeline` の内部 building block も bits-ui pattern に倣って **public export** している。 通常 consumer は `ResourceTimeline` 経由で十分だが、 独自のレイアウトに組み込みたい advanced ケース向け:
+
+| export | 用途 |
+|---|---|
+| `Bar` | 1 本の bar (drag / resize / activate / cursor follow tooltip 内蔵)。 `ResourceTimeline` を使わず独自の grid に bar だけ載せたい場合に |
+| `snapDate` | 任意の `Date` を zoom 単位の境界に snap する pure function。 consumer 側で「toolbar の day picker を週頭に丸める」 等に |
+
+これらを **使わない** 場合は \`ResourceTimeline\` / `TimelineToolbar` だけ import すれば tree-shaking で bundle に含まれない。 dead export ではなく composition 用 building block として意図的に維持 (#71)。
+
 ### Tips
 
 - consumer 側の **`<Tooltip.Provider>` は不要** (library 内で self-contained)
