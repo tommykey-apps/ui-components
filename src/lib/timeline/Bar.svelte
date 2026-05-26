@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { Tooltip } from 'bits-ui';
-	import { createCursorAnchor, type VirtualAnchor } from './cursor-anchor.js';
 	import type { Assignment, BarLabels } from './types.js';
 
 	type DragMode = 'idle' | 'move' | 'resize-start' | 'resize-end';
@@ -17,7 +15,7 @@
 		ariaDescribedBy?: string;
 		/**
 		 * #33: a11y 文字列 (resize handle の aria-label) を consumer の locale で override。
-		 * default は英語、 ResourceTimeline 経由で渡すのが通常 (consumer は \`<ResourceTimeline labels={...}>\`)。
+		 * default は英語、 ResourceTimeline 経由で渡すのが通常 (consumer は `<ResourceTimeline labels={...}>`)。
 		 * #59: 部分指定可 (内部で個別 fallback)。 bits-ui 流の primitive 設計に合わせる。
 		 */
 		labels?: BarLabels;
@@ -69,29 +67,7 @@
 	let dx = $state(0);
 	let dy = $state(0);
 
-	/**
-	 * #42: hover tooltip をカーソルに追従させる。
-	 * bits-ui default は trigger 要素 (bar) の中心が anchor になるが、 wide bar (例 6 ヶ月案件)
-	 * では bar の center が viewport 外/右端になり tooltip が画面端に貼りつく。
-	 *
-	 * floating-ui の virtual element pattern で pointermove ごとに anchor を作り直す。
-	 * Tooltip.Content の \`align="start" sideOffset / alignOffset\` で「カーソル右上」配置。
-	 */
-	let cursorAnchor = $state<VirtualAnchor | null>(null);
-
-	function handlePointerEnter(e: PointerEvent) {
-		if (e.pointerType !== 'mouse') return;
-		cursorAnchor = createCursorAnchor(e.clientX, e.clientY);
-	}
-
-	// #60: pointerleave で cursorAnchor を null に戻すと bits-ui が trigger 要素 (bar) を
-	// anchor に fallback して、 close transition 中の 1 RAF で tooltip が画面左に飛んで描画
-	// される。 anchor は最後の cursor 位置で保持しておき unmount で GC、 次回 pointerenter で
-	// createCursorAnchor が新 instance を作るので stale 参照問題なし。
-
-	let liveLeft = $derived(
-		x + (mode === 'move' || mode === 'resize-start' ? dx : 0)
-	);
+	let liveLeft = $derived(x + (mode === 'move' || mode === 'resize-start' ? dx : 0));
 	let liveTop = $derived(y + (mode === 'move' ? dy : 0));
 	let liveWidth = $derived(
 		mode === 'resize-start'
@@ -133,11 +109,6 @@
 	}
 
 	function handlePointerMove(e: PointerEvent) {
-		// #42: drag 中でも hover 中でも cursor 座標を tooltip anchor として更新する。
-		// drag 中は tooltip を隠す挙動でも OK (bits-ui 自動)。 anchor 更新自体は安全。
-		if (e.pointerType === 'mouse' && cursorAnchor) {
-			cursorAnchor = createCursorAnchor(e.clientX, e.clientY);
-		}
 		if (mode === 'idle') return;
 		dx = e.clientX - startX;
 		dy = e.clientY - startY;
@@ -235,97 +206,66 @@
 </script>
 
 <!--
-	hover tooltip は常時 enabled (#39)、 Portal で Gantt overflow:hidden を回避 (#28)。
-	cursor follow は customAnchor + virtual element (#42)、 公式 mergeProps で hover 検出を温存 (#50)。
+	#84: sticky label 採用 (#39 の再挑戦)。 業界実装 (DHTMLX `sticky:true`、 Ben Nadel の Angular Gantt) に
+	倣い、 `.bar` から `overflow:hidden` を外して `.label` を `position:sticky; left:<rail width>` にした。
+	#39 で「CSS spec 上不可」 と判断したのは誤りで、 `overflow:hidden` を親から外して label 側に
+	max-width を移せば CSS only で実現可能 (Ben Nadel パターン)。 これに伴い従来の hover tooltip
+	(bits-ui Tooltip + cursorAnchor / floating-ui virtual element) は完全廃止 — #42 / #60 の bug も
+	本実装で吸収。
 -->
-<Tooltip.Root>
-	<!--
-		#42 hotfix (#48): bits-ui 公式 pattern に従い、 自前のイベントハンドラは
-		\`Tooltip.Trigger\` component に直接渡す。 bits-ui の \`mergeProps\` が内部 hover
-		検出ハンドラと自動合成して child snippet の \`props\` に流してくれる。
-		https://next.bits-ui.com/docs/child-snippet
-	-->
-	<Tooltip.Trigger
-		role="button"
-		tabindex={0}
-		aria-label={assignment.label ?? assignment.id}
-		aria-describedby={ariaDescribedBy}
-		onpointerdown={handlePointerDownBody}
-		onpointerenter={handlePointerEnter}
-		onpointermove={handlePointerMove}
-		onpointerup={handlePointerUp}
-		onpointercancel={handlePointerUp}
-		onkeydown={handleKeydown}
-	>
-		{#snippet child({ props })}
-			<div
-				{...props}
-				class="bar"
-				class:dragging={mode === 'move'}
-				class:resizing={mode === 'resize-start' || mode === 'resize-end'}
-				style:--bar-left="{liveLeft}px"
-				style:--bar-top="{liveTop}px"
-				style:--bar-width="{liveWidth}px"
-				style:--bar-height="{height}px"
-				style:--bar-bg-override={assignment.color ?? null}
-			>
-				<span class="label">{assignment.label ?? ''}</span>
+<!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
+<div
+	role="button"
+	tabindex={0}
+	aria-label={assignment.label ?? assignment.id}
+	aria-describedby={ariaDescribedBy}
+	class="bar"
+	class:dragging={mode === 'move'}
+	class:resizing={mode === 'resize-start' || mode === 'resize-end'}
+	style:--bar-left="{liveLeft}px"
+	style:--bar-top="{liveTop}px"
+	style:--bar-width="{liveWidth}px"
+	style:--bar-height="{height}px"
+	style:--bar-bg-override={assignment.color ?? null}
+	onpointerdown={handlePointerDownBody}
+	onpointermove={handlePointerMove}
+	onpointerup={handlePointerUp}
+	onpointercancel={handlePointerUp}
+	onkeydown={handleKeydown}
+>
+	<span class="label">{assignment.label ?? ''}</span>
 
-				{#if resizable}
-					<!-- #81: WAI-ARIA 上 focusable splitter separator は valid だが、 Svelte linter は
-					     separator を interactive role と認識しないため ignore directive で抑制 -->
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-					<!-- #63: handle の pointerdown で setPointerCapture を取れば pointermove/up/cancel
-					     は capture 経由で親 bar の listener に届く。 handle に redundant listener 不要 -->
-					<div
-						class="handle handle-start"
-						role="separator"
-						tabindex={0}
-						aria-orientation="vertical"
-						aria-valuenow={0}
-						aria-label={resolvedLabels.resizeStart}
-						onpointerdown={handlePointerDownLeft}
-						onkeydown={handleHandleKeydown('start')}
-					></div>
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-					<div
-						class="handle handle-end"
-						role="separator"
-						tabindex={0}
-						aria-orientation="vertical"
-						aria-valuenow={100}
-						aria-label={resolvedLabels.resizeEnd}
-						onpointerdown={handlePointerDownRight}
-						onkeydown={handleHandleKeydown('end')}
-					></div>
-				{/if}
-			</div>
-		{/snippet}
-	</Tooltip.Trigger>
-	<Tooltip.Portal>
-		<!--
-			#42: customAnchor で virtual element (cursor 座標) を渡し、 floating-ui に
-			「bar 中心」ではなく「カーソル位置」を anchor として扱わせる。
-			- side="top" align="start" + sideOffset / alignOffset で「カーソル右上」配置
-			- cursorAnchor が null (keyboard focus / touch 等) のときは未指定 = bits-ui default
-			  (trigger 要素 anchor) に fallback
-			- flip / shift は floating-ui middleware に任せる (viewport 端で自動補正)
-		-->
-		<Tooltip.Content
-			class="ui-bar-tooltip"
-			side="top"
-			align="start"
-			sideOffset={12}
-			alignOffset={12}
-			customAnchor={cursorAnchor}
-		>
-			{assignment.label ?? ''}
-			<Tooltip.Arrow class="ui-bar-tooltip-arrow" />
-		</Tooltip.Content>
-	</Tooltip.Portal>
-</Tooltip.Root>
+	{#if resizable}
+		<!-- #81: WAI-ARIA 上 focusable splitter separator は valid だが、 Svelte linter は
+		     separator を interactive role と認識しないため ignore directive で抑制 -->
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<!-- #63: handle の pointerdown で setPointerCapture を取れば pointermove/up/cancel
+		     は capture 経由で親 bar の listener に届く。 handle に redundant listener 不要 -->
+		<div
+			class="handle handle-start"
+			role="separator"
+			tabindex={0}
+			aria-orientation="vertical"
+			aria-valuenow={0}
+			aria-label={resolvedLabels.resizeStart}
+			onpointerdown={handlePointerDownLeft}
+			onkeydown={handleHandleKeydown('start')}
+		></div>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div
+			class="handle handle-end"
+			role="separator"
+			tabindex={0}
+			aria-orientation="vertical"
+			aria-valuenow={100}
+			aria-label={resolvedLabels.resizeEnd}
+			onpointerdown={handlePointerDownRight}
+			onkeydown={handleHandleKeydown('end')}
+		></div>
+	{/if}
+</div>
 
 <style>
 	.bar {
@@ -342,7 +282,7 @@
 		align-items: center;
 		box-shadow: var(--ui-bar-shadow, 0 1px 2px rgb(0 0 0 / 0.12));
 		box-sizing: border-box;
-		overflow: hidden;
+		/* #84: sticky label を効かせるため親の clip 指定 (overflow) は付けない。 label 側 max-width で clip。 */
 		user-select: none;
 		font-family: var(--ui-font, system-ui, sans-serif);
 		cursor: grab;
@@ -360,15 +300,30 @@
 		cursor: grabbing;
 	}
 
-	/* label は通常 inline (ellipsis 切れ)。 long bar の label 視認は hover tooltip (#39) で代替。
-	   sticky にしない理由は #32 / #39 参照。 */
+	/*
+	 * #84: position: sticky で label を viewport 内に貼り付ける (Ben Nadel pattern)。
+	 *  - left: rail 幅。 sticky の nearest scrolling ancestor は .timeline、 そこから
+	 *    rail 右端の x 位置に貼り付ける (= rail の裏に潜らない)
+	 *  - max-width: 100% で bar 幅まで (overflow:hidden を親から外したぶんを補償)
+	 *  - bar の 8px padding 分 + handle 6px 分の余裕を残す (label が handle と被らない)
+	 */
 	.label {
+		position: sticky;
+		left: var(--ui-resource-col-width, 200px);
+		/*
+		 * #84: sticky shift には containing box (.bar) 内に余白が必要。 flex: 1 で
+		 * label.width = bar.contentWidth にすると余白 0 で sticky shift できない。
+		 * flex: 0 1 auto (intrinsic width) + max-width で bar 幅に clamp。
+		 */
+		flex: 0 1 auto;
+		max-width: 100%;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;
 		font-size: var(--ui-bar-font-size, 12px);
 		font-weight: 500;
-		flex: 1;
+		/* sticky 化で handle 上に被っても pointer event を奪わないように */
+		pointer-events: none;
 	}
 
 	.handle {
@@ -379,6 +334,8 @@
 		cursor: ew-resize;
 		background: transparent;
 		touch-action: none;
+		/* sticky label に隠されないよう前面に */
+		z-index: 1;
 	}
 
 	/* hit area 拡張 (#20、WCAG 2.5.8 AA: 24×24 最低 / 縦は AAA の 44 達成):
@@ -405,23 +362,5 @@
 
 	.handle-end {
 		right: 0;
-	}
-
-	/* #28: Tooltip.Content / Tooltip.Arrow は Portal で document.body 配下に mount される。
-	   scoped style では届かないので :global() で書く。テーマは ui-bar-bg / ui-bar-fg と一貫させる。 */
-	:global(.ui-bar-tooltip) {
-		background: var(--ui-bar-bg, #1a1a1a);
-		color: var(--ui-bar-fg, #ffffff);
-		padding: 6px 10px;
-		border-radius: var(--ui-bar-radius, 4px);
-		font-size: var(--ui-bar-font-size, 12px);
-		font-family: var(--ui-font, system-ui, sans-serif);
-		box-shadow: var(--ui-bar-shadow, 0 1px 2px rgb(0 0 0 / 0.12));
-		max-width: 320px;
-		z-index: 1000;
-	}
-
-	:global(.ui-bar-tooltip-arrow) {
-		fill: var(--ui-bar-bg, #1a1a1a);
 	}
 </style>

@@ -63,21 +63,41 @@ describe('Bar labels prop typing (regression: #59)', () => {
 });
 
 /**
- * #42 / #60: tooltip は floating-ui の virtual element (cursorAnchor) で cursor 追従する。
- * - #42: customAnchor={cursorAnchor} で cursor 位置に anchor 固定、 wide bar でも viewport 端に
- *   貼りつかない。
- * - #60: pointerleave で cursorAnchor = null にすると bits-ui が trigger 要素 (bar) を anchor に
- *   fallback し、 close transition 中の 1 RAF で tooltip が「画面左に飛ぶ」 ように描画される。
- *   null にせず最後の cursor 位置で保持 → unmount で GC、 次回 pointerenter で上書きされる。
+ * #84: bits-ui Tooltip + floating-ui virtual anchor (cursorAnchor) を全廃して
+ * CSS `position: sticky` ベースの sticky label に切替。 業界実装 (DHTMLX Gantt の
+ * sticky scale config、 Ben Nadel の Angular Gantt) と同 pattern。
+ *
+ * #42 / #60 (旧 tooltip 系 bug) は本実装で吸収して close。
  */
-describe('Bar tooltip cursor anchor (regression: #42 / #60)', () => {
-	it('Tooltip.Content は customAnchor={cursorAnchor} を渡す (#42 cursor 追従)', () => {
-		expect(source).toMatch(/customAnchor=\{cursorAnchor\}/);
+describe('Bar sticky label / tooltip removal (regression: #84, supersedes #42 / #60)', () => {
+	it('bits-ui Tooltip import を持たない', () => {
+		expect(source).not.toMatch(/from\s+['"]bits-ui['"]/);
 	});
 
-	it('pointerleave で cursorAnchor = null にしない (#60 close transition 中の飛び防止)', () => {
-		// handlePointerLeave は削除済み、 もしくは cursorAnchor 代入が無い形であること
-		expect(source).not.toMatch(/cursorAnchor\s*=\s*null/);
+	it('cursor-anchor module を import しない (廃止済)', () => {
+		expect(source).not.toMatch(/from\s+['"]\.\/cursor-anchor/);
+	});
+
+	it('Tooltip.Root / Tooltip.Content の markup を持たない', () => {
+		expect(source).not.toMatch(/<Tooltip\.(Root|Trigger|Portal|Content)/);
+	});
+
+	it('.bar の CSS に overflow: hidden を含まない (sticky 親条件)', () => {
+		// .bar { ... } の中の overflow: hidden 宣言を検出
+		const barBlock = source.match(/\.bar\s*\{[^}]*\}/);
+		expect(barBlock, '.bar style ブロックが見つからない').toBeTruthy();
+		expect(barBlock![0]).not.toMatch(/overflow\s*:\s*hidden/);
+	});
+
+	it('.label の CSS に position: sticky を含む', () => {
+		const labelBlock = source.match(/\.label\s*\{[^}]*\}/);
+		expect(labelBlock, '.label style ブロックが見つからない').toBeTruthy();
+		expect(labelBlock![0]).toMatch(/position\s*:\s*sticky/);
+	});
+
+	it('.label に sticky 用 left 値 (rail width offset) がある', () => {
+		const labelBlock = source.match(/\.label\s*\{[^}]*\}/);
+		expect(labelBlock![0]).toMatch(/left\s*:/);
 	});
 });
 

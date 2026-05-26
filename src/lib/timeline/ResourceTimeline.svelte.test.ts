@@ -70,3 +70,17 @@ describe('ResourceTimeline aria-live (regression: #70)', () => {
 		);
 	});
 });
+
+/**
+ * #84: bits-ui Tooltip / Tooltip.Provider は廃止し、 Bar.svelte の sticky label で代替。
+ * consumer に Tooltip.Provider を強要しない self-contained 設計は維持しつつ、 そもそも Provider 不要。
+ */
+describe('ResourceTimeline tooltip removal (regression: #84)', () => {
+	it('bits-ui Tooltip を import しない', () => {
+		expect(source).not.toMatch(/from\s+['"]bits-ui['"]/);
+	});
+
+	it('Tooltip.Provider wrapper を持たない', () => {
+		expect(source).not.toMatch(/<\/?Tooltip\.Provider/);
+	});
+});
