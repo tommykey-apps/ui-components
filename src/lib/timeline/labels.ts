@@ -8,7 +8,16 @@
  * 全 key を読めるよう保証する純粋関数。 deep merge せず 1 段ネストまで (本 API の
  * shape に合わせ)。
  */
-import type { BarLabels, TimelineLabels } from './types.js';
+import type { BarLabels } from './types.js';
+
+/**
+ * #65: ResolvedTimelineLabels が canonical な型。 `TimelineLabels` (consumer prop) は
+ * DeepPartial で派生させ、 key 追加時の 2 重定義同期忘れを防ぐ。 function value は
+ * partial 化せずそのまま (override は関数単位で置換する想定)。
+ */
+type DeepPartial<T> = T extends (...args: never[]) => unknown
+	? T
+	: { [K in keyof T]?: DeepPartial<T[K]> };
 
 export type ResolvedTimelineLabels = {
 	bar: Required<BarLabels>;
@@ -22,6 +31,8 @@ export type ResolvedTimelineLabels = {
 		keyResizeEnd: (range: string) => string;
 	};
 };
+
+export type TimelineLabels = DeepPartial<ResolvedTimelineLabels>;
 
 export const DEFAULT_TIMELINE_LABELS: ResolvedTimelineLabels = {
 	bar: {
