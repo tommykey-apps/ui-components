@@ -259,7 +259,8 @@
 	type HeaderGroup = { value: string; span: number; startIdx: number };
 
 	function groupHeaderCells(cells: Date[], tier: HeaderTier): HeaderGroup[] {
-		const fn = tier.format ?? ((d: Date) => format(d, tier.fmt ?? ''));
+		// #74: tier.fmt は string | ((Date) => string) の union (旧 fmt / format 2 field を統合)
+		const fn = typeof tier.fmt === 'function' ? tier.fmt : (d: Date) => format(d, tier.fmt as string);
 		return cells.reduce<HeaderGroup[]>((acc, col, i) => {
 			const value = fn(col);
 			const last = acc[acc.length - 1];
@@ -356,7 +357,8 @@
 	>
 		{#each rowLayouts as row (row.resource.id)}
 			<div class="grid-row" style:top="{row.rowTop}px" style:height="{row.height}px">
-				{#each columns as _col, ci (ci)}
+				<!-- #75: count しか必要としないので columns Date[] を消費せず canvasCols (number) で iterate -->
+				{#each { length: canvasCols } as _, ci (ci)}
 					<div class="grid-cell" style:left="{ci * zoom.colWidth}px" style:width="{zoom.colWidth}px"></div>
 				{/each}
 			</div>
@@ -416,7 +418,11 @@
 							0,
 							Math.min(resources.length - 1, currentRowIndex + rows)
 						);
-						const newResourceId = resources[newRowIndex].id;
+						// #73 noUncheckedIndexedAccess: resources が空 (newRowIndex = -1) は実用上ない
+						// (Bar が render されないため) が、 静的解析上は guard が必要
+						const newResource = resources[newRowIndex];
+						if (!newResource) return;
+						const newResourceId = newResource.id;
 						if (units === 0 && newResourceId === layout.assignment.resourceId) return;
 						const updated: Assignment = {
 							...layout.assignment,
@@ -447,7 +453,8 @@
 			{/each}
 	</div>
 
-	<div id={statusId} role="status" aria-live="polite" class="sr-only">{statusMessage}</div>
+	<!-- #70: aria-atomic="true" で SR が連続更新の中間値を skip せず最終値を atomic に announce -->
+	<div id={statusId} role="status" aria-live="polite" aria-atomic="true" class="sr-only">{statusMessage}</div>
 </div>
 </Tooltip.Provider>
 
