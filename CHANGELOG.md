@@ -1,5 +1,160 @@
 # @tommykey-apps/ui-components
 
+## 0.10.0
+
+### Minor Changes
+
+- 39581d0: feat(Bar): `onActivate` prop を追加 — pointer click + keyboard (Enter/Space) を unified に通知 (#85)
+
+  `Bar` / `ResourceTimeline` に `onActivate?: (assignment: Assignment) => void` prop を追加。 consumer (例: resource-planner) が bar クリックで detail dialog を起動する用途を想定。
+
+  WAI-ARIA Button pattern に準拠し、 React Aria の `usePress` 同思想で **input agnostic** な命名 (`onActivate`) を採用:
+
+  - pointer: `pointerup` 時に `Math.hypot(dx, dy) < 4px` (dnd-kit 系の慣例) なら drag ではなく click として `onActivate`
+  - keyboard: `Enter` / `Space` で `preventDefault` + `onActivate`
+  - resize handle 上の click では発火しない (`mode === 'move'` の時のみ)
+
+  既存 API (`onDragEnd` / `onResizeEnd` / `onKeyMove` / `onKeyResize` / `onMove` / `onResize`) は無変更。 additive な API 追加。
+
+- 39581d0: feat(ResourceTimeline): `onResize` callback に `edge` 情報を渡す (#68)
+
+  `onResize?: (assignment: Assignment) => void` → `(assignment: Assignment, edge?: 'start' | 'end') => void` に signature 拡張。 旧 consumer `(updated) => ...` は edge を無視するので **backward-compatible**。
+
+  従来は `Bar.onResizeEnd(edge, dx)` から `edge` 情報が `ResourceTimeline.onResize` に伝達されず、 consumer が「どっち側の handle で resize されたか」 を判断したい時に updated と前回値を diff する必要があった。 transparently に edge を 2nd 引数で expose。
+
+  `onKeyResize` 経由の resize でも同様に edge を渡す。
+
+### Patch Changes
+
+- db7b700: chore(ResourceTimeline): grid-cell loop を `canvasCols` (number) で iterate (#75)
+
+  `columns` (Date[]) は header 描画用、 grid-cell loop では index しか使わないため `{ length: canvasCols }` で iterate に変更。 Date 配列の reactive dep を踏まずマイクロ最適化 + 意図が明確に。
+
+- db7b700: chore(tsconfig): enable `noUncheckedIndexedAccess` (#73)
+
+  publish library として safety-first。 grep 調査で実 read site は 3 件 (`resources[newRowIndex]` 1 件、 `laneEnds[i]` / `laneEndCols[i]` の write 2 件 — write は対象外) で、 一括対応で済むため段階導入せず即時 enable。
+
+  `ResourceTimeline.svelte` の `onKeyMove` で `resources[newRowIndex]` を `Resource | undefined` として扱い、 早期 return guard を追加。 実用上 `resources` が空配列なら Bar 自体 render されない (rowLayouts が空) ので副作用なし、 静的解析を満たすための補強。
+
+- db7b700: docs(Bar): `handleKeydown` の modifier matrix を JSDoc に明記 (#72)
+
+  Bar body focus 時の Arrow + modifier 組合せ (none / Alt / Shift / Shift+Alt) と各操作 (move / resize / no-op) を JSDoc 内表で明記。
+
+  `Alt+ArrowUp/Down` は「縦方向 resize」 が概念的に存在しないため意図的に no-op + native default 通過 (WAI-ARIA APG の「desktop convention に従う」 方針)。 動作変更なし、 documentation only。
+
+- db7b700: docs(README): `Bar` / `snapDate` を low-level primitive として public export している意図を明記 (#71)
+
+  bits-ui 流の primitive 公開 pattern に従い、 `ResourceTimeline` の building block (`Bar`, `snapDate`) を意図的に export 維持していることを README に追記。 dead export ではなく advanced composition 用。 tree-shaking で未使用なら bundle に含まれないため defaults 利用者への悪影響なし。
+
+  API breaking なし、 documentation only。
+
+- e337d14: fix(projection): `allocateLanes` を col 単位の重複判定にも対応 (#61)
+
+  year/month zoom で同一 resource の複数 assignment が時間軸では非重複でも描画 col 上で同位置に詰まり、 後勝ち 1 件しか見えない問題を修正。
+
+  `allocateLanes(assignments, { origin, unit })` のように optional 引数を追加し、 col 単位 (`endColExclusive`) で重複判定するパスを追加。 ResourceTimeline は zoom.unit / origin を渡し、 vis-timeline / Bryntum 等で標準の vertical stacking 戦略に合わせて lane 数を増やす。 行高さは既存 `rowLayouts` が `laneCount` ベースで動的計算しているので自動的に伸びる。
+
+  day zoom 等 fine-grained では時間軸ベースと結果一致するため backward-compatible。 引数なし call (公開 API として直接使う想定があれば) は従来の時間軸判定で動作。
+
+- fcbbe39: fix(projection): `allocateLanes` で重複 assignment.id を DEV mode で警告 (#58)
+
+  従来は同一 id を含む assignments を渡すと `lanes.set(a.id, i)` で silent 上書きされ、 1 行に複数 lane を持つはずの consumer が「最初の bar しか表示されない」 ような状況に気づけなかった (#61 と表面化症状が一致するケース)。
+
+  DEV mode 時のみ `console.warn('[ResourceTimeline] duplicate assignment id: ${id}')` を出力し、 production には影響を与えない。 併せて `Assignment.id` の jsdoc に「一意 id 必須」 を明記。
+
+- db7b700: fix(ResourceTimeline): aria-live region に `aria-atomic="true"` 追加 (#70)
+
+  `role="status" aria-live="polite"` だけだと、 keyboard 連打 (ArrowRight 連続 move) で status が高速更新された際に NVDA 等のスクリーンリーダーが中間値を skip して最終値だけアナウンスする保証がない。 WAI-ARIA APG 推奨の `aria-atomic="true"` を追加し、 region 全体を atomic に再 announce する挙動を明示。
+
+- fcbbe39: fix(Bar): `labels` prop を partial 許容に緩和 (#59)
+
+  従来 `labels?: Required<BarLabels>` は「渡さなくて良い、 でも渡すなら全 key 必須」 という二択で、 `Bar` を直接 import する consumer が一部 key だけ override したい場合に型エラーになっていた。 bits-ui 流の primitive 設計に揃え、 `labels?: BarLabels` (任意 key optional) + 内部 fallback (`resolvedLabels` $derived) に変更。
+
+  `ResourceTimeline` 経由で渡される labels は従来通り `resolveLabels()` でフルセット化されており、 既存の behavior は変わらない (backward-compatible)。
+
+- 3306eb0: fix(Bar): resize ハンドルに必須 ARIA 属性と keyboard アクセス手段を追加 (#81)
+
+  `Bar.svelte` の resize ハンドル (`role="separator"`) は WAI-ARIA 上 focusable splitter として `aria-valuenow` / `aria-orientation` が必須、 かつキーボードユーザーが到達するための `tabindex` が必要だった。 従来は属性も `tabindex` も欠落しており、 a11y Critical。
+
+  - `tabindex={0}` 追加 (handle にキーボードフォーカス可能に)
+  - `aria-orientation="vertical"` 明示 (default は horizontal)
+  - `aria-valuenow={0}` (start handle) / `aria-valuenow={100}` (end handle) 付与
+  - handle focus 中の矢印キーで該当 edge を resize する handler (`handleHandleKeydown`) を新設 (Alt キー不要、 edge が自明なので)
+
+- fcbbe39: fix(ResourceTimeline): `document.fonts.ready.then(remeasure)` に teardown を追加 (#57)
+
+  `$effect` 内で `document.fonts.ready.then(remeasure)` を呼んでいたが、 Promise は cancel 不可で unmount や effect 再 run 後にも resolve する。 resolve 後の `remeasure` が `measuredRailWidth` (`$state` への write) や `timelineEl.querySelector(...)` を実行し、 orphan DOM 参照を引く恐れがあった。
+
+  Svelte 公式の teardown function 内で `cancelled = true` を立て、 `remeasure` 冒頭で gate するパターンに変更。
+
+- cc22d91: fix(ResourceTimeline): `statusId` を `$props.id()` で SSR-stable な生成に変更 (#56)
+
+  従来 `Math.random()` 由来の id を script 評価時に生成しており、SSR と client hydration で別 id になることで `aria-describedby` の参照が成立しなくなる hydration mismatch があった。 Svelte 5 公式の `$props.id()` (component instance 単位で SSR-stable) に置き換え。
+
+- 6022519: fix(Bar): tooltip が hover 解除時に画面左へ一瞬飛んで消える bug を解消 (#60、 #42 関連)
+
+  `pointerleave` で `cursorAnchor = null` に戻していたが、 bits-ui (floating-ui) は `customAnchor` が null になると trigger 要素 (bar) を anchor として再計算し、 wide bar では shift middleware で viewport 端にクランプされて 1 RAF だけ「左に飛んだ」 位置で描画されていた。
+
+  `handlePointerLeave` を削除し、 cursor 位置の virtual anchor を unmount まで保持する。 bits-ui が `data-state="closed"` で unmount すると virtual element ごと GC され、 次回 pointerenter で `createCursorAnchor` が新 instance を作るので stale 参照問題なし。
+
+  Playwright で再現 (frame1 で left=595→37 へ jump) → 修正後 (frame1 で left=595 保持、 frame2 で unmount) を確認。 #42 の virtual anchor 実装 (`customAnchor={cursorAnchor}`) も regression test で恒久化。
+
+- 53bb1e4: refactor(Bar): resize handle の listener を削減 (#63)
+
+  `startDrag` 内の `setPointerCapture(handle)` で handle が capture 元になると、 続く `pointermove` / `pointerup` / `pointercancel` は capture 経由で bubble path の親 `bar` listener に届く。 handle 側の 3 listener (`onpointermove` / `onpointerup` / `onpointercancel`) は redundant のため削除。
+
+  残るのは `onpointerdown` (mode 確定 + capture 取得) と `onkeydown` (handle focus 中の keyboard resize) のみ。 handle あたり 2 listener、 計 4 listener 削減。 動作不変。
+
+- 53bb1e4: refactor(ResourceTimeline): 4 callback の重複 pattern を `buildMovedAssignment` / `buildResizedAssignment` の 2 helper に集約 (#62)
+
+  `onDragEnd` / `onResizeEnd` / `onKeyMove` / `onKeyResize` で 4 重複していた「Assignment patch + bounds check」 を **move 軸と resize 軸の 2 helper** に分離して集約。 issue 案 (1 関数 + tagged union) は型が複雑化するため AHA 原則に従い「変化する軸」 (move vs resize) で分割。
+
+  - `buildMovedAssignment(base, { colDelta, newResourceId })`: 移動 + 行跨ぎを 1 関数で。 no-op 時は `null` を return
+  - `buildResizedAssignment(base, edge, colDelta)`: edge ('start' | 'end') 別の bounds check + patch。 反転 (start ≥ end / end ≤ start) 時は `null` を return
+
+  各 callback は 「特殊前処理 (dx → colDelta、 dy → newRow 等) → helper → status + dispatch」 の 3 段に整理、 4 callback 合計で約 60 行 → 約 35 行に圧縮。 動作不変。
+
+- 53bb1e4: refactor(ResourceTimeline): `fmtRange` の手書き zero-pad を `date-fns format` に置換 (#64)
+
+  `fmt = (d) => \`${getFullYear()}-${padStart(getMonth()+1)}...\``の自前 zero-pad を`format(d, 'yyyy-MM-dd')`に置換。 既に`import { format } from 'date-fns'`済、 CLAUDE.md の`date-fns v4` 規約と整合。 3 行 → 1 行。 出力フォーマット同一。
+
+- 53bb1e4: refactor(labels): `TimelineLabels` を `ResolvedTimelineLabels` から `DeepPartial` 派生に統一 (#65)
+
+  従来は `types.ts` の `TimelineLabels` (全 optional) と `labels.ts` の `ResolvedTimelineLabels` (全必須) を 2 重に手書きしており、 status の key (move/resizeStart/resizeEnd/keyMove/keyResizeStart/keyResizeEnd) を 1 つ追加するたび両方同期する必要があった。
+
+  `labels.ts` で `type DeepPartial<T>` を定義し、 `TimelineLabels = DeepPartial<ResolvedTimelineLabels>` で派生。 `types.ts` からは `export type { ... } from './labels.js'` で re-export のみ。 function value (`status.move` 等) は partial 化対象外で関数単位置換のまま (`T extends (...args) => unknown ? T : { [K]?: ... }`)。
+
+  consumer から見た型 shape は同じ、 backward-compatible。 caller (`ResourceTimeline.svelte` 等) も変更なし。
+
+- 53bb1e4: refactor: `createPointerDrag` helper を抽出して canvas drag-to-pan を集約 (#67)
+
+  `setPointerCapture` パターン (pointerdown で capture → 続く pointermove / pointerup / pointercancel を同 listener で拾う) を `pointer-drag.ts` の `createPointerDrag(opts)` factory に集約。 closure 内に start coords / pointerId を閉じ込めることで、 caller は `onPointerDown` / `onPointerMove` / `onPointerUp` の 3 関数を template に bind するだけ。 unit test 可能 (vitest で 6 ケース追加)。
+
+  採用箇所: `ResourceTimeline` の canvas drag-to-pan。
+
+  採用しない箇所 (**AHA 原則**「不適切な abstraction より duplication」): `Bar.svelte` の drag / resize は mode 切替 (move / resize-start / resize-end) と 2D delta + threshold check が closure 内 state と密結合しており、 共通化すると caller 側で mode 判定が増え helper の汎用性メリットが消えるため維持。
+
+- 53bb1e4: refactor(TimelineToolbar): `ToolbarLabels` / `DEFAULT_TOOLBAR_LABELS` を `labels.ts` に集約 (#66)
+
+  inline 定義から `labels.ts` の canonical 型に移動し、 `index.ts` から `ToolbarLabels` / `DEFAULT_TOOLBAR_LABELS` を export。 consumer が覚える type は 1 つだけ (#66 の DX 問題を解決)。
+
+  API surface (`labels` / `ariaLabels` 2 prop) は維持 (WAI-ARIA APG: icon-only button は aria-label 必須、 text button は visible text が name 兼任 — 完全統合せず両者を complementary に扱う)。 backward-compatible。
+
+- db7b700: refactor(types): `ZoomLevel.id` を `ZoomUnit` alias に統一 / `HeaderTier.fmt` と `format` を 1 field に統合 (#74)
+
+  `types.ts`:
+
+  - `ZoomLevel.id` の union `'day' | 'week' | 'month' | 'year'` を `ZoomUnit` alias に置き換え (完全一致の重複定義を削除)
+  - `HeaderTier` の `fmt?: string` + `format?: (Date) => string` 2 field を `fmt: string | ((Date) => string)` の 1 field に統合
+
+  caller 側 (`zoom.ts`, `ResourceTimeline.svelte`):
+
+  - zoom.ts の `format:` → `fmt:` に migration (week tier の関数 formatter)
+  - `ZOOMS` の Record key type も `ZoomUnit` alias を使う
+  - `groupHeaderCells` で `typeof tier.fmt === 'function'` で分岐
+
+  internal 型なので consumer impact なし、 backward-compatible (型の simplification のみ)。
+
 ## 0.9.3
 
 ### Patch Changes
