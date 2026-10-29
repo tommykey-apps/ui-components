@@ -5,6 +5,7 @@ import {
 	barRect,
 	dateToX,
 	endColExclusive,
+	isOnCanvas,
 	maxEndCol,
 	snapDate,
 	startOfUnit,
@@ -156,6 +157,40 @@ describe('maxEndCol', () => {
 	it('all in past: clamped to 0', () => {
 		const items = [mkAssignment('a', new Date(2026, 3, 1), new Date(2026, 3, 8))];
 		expect(maxEndCol(items, new Date(2026, 4, 4), 'day')).toBe(0);
+	});
+});
+
+describe('isOnCanvas', () => {
+	const origin = new Date(2026, 4, 16);
+
+	it('origin より前に終わる bar は canvas 外', () => {
+		const a = mkAssignment('a', new Date(2026, 4, 4), new Date(2026, 4, 15));
+		expect(isOnCanvas(a, origin, 'day')).toBe(false);
+	});
+
+	it('endDate が origin ちょうど (exclusive 境界) は canvas 外', () => {
+		const a = mkAssignment('a', new Date(2026, 4, 4), new Date(2026, 4, 16));
+		expect(isOnCanvas(a, origin, 'day')).toBe(false);
+	});
+
+	it('origin をまたぐ bar は canvas 内', () => {
+		const a = mkAssignment('a', new Date(2026, 4, 4), new Date(2026, 4, 17));
+		expect(isOnCanvas(a, origin, 'day')).toBe(true);
+	});
+
+	it('origin 以降に始まる bar は canvas 内', () => {
+		const a = mkAssignment('a', new Date(2026, 4, 18), new Date(2026, 5, 1));
+		expect(isOnCanvas(a, origin, 'day')).toBe(true);
+	});
+
+	it('origin 上の長さ 0 の bar は barRect と同じく 1 col 描画されるので canvas 内', () => {
+		const a = mkAssignment('a', origin, origin);
+		expect(isOnCanvas(a, origin, 'day')).toBe(true);
+	});
+
+	it('month zoom: origin と同じ月に終わる bar は部分 col として canvas 内', () => {
+		const a = mkAssignment('a', new Date(2026, 3, 1), new Date(2026, 4, 10));
+		expect(isOnCanvas(a, new Date(2026, 4, 1), 'month')).toBe(true);
 	});
 });
 

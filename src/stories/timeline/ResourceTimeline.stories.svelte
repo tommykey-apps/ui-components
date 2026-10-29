@@ -50,6 +50,12 @@
 <Story name="Empty" args={{ zoom: ZOOMS.day, assignments: [] }} />
 
 <!--
+	表示開始日より前に終わる bar は行の高さに影響しない。
+	田中 太郎の a1 / a7 (5/04-5/15 で 2 段) は 5/16 開始では見えないので、 行は B社 改修の 1 段になる。
+-->
+<Story name="PastAssignments" args={{ zoom: ZOOMS.day, viewportStart: new Date(2026, 4, 16) }} />
+
+<!--
 	#84: 長期間 bar (6 ヶ月) で **sticky label** が rail 右端に貼り付き、 viewport 内で
 	常時 project 名が読める挙動を visual に確認する story。 #32 → #39 → #84 の経緯:
 	#32 で sticky 導入 → #39 で revert (実は `.bar { overflow: hidden }` を外せば実現可能、

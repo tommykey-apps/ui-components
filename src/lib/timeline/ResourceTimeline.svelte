@@ -6,6 +6,7 @@
 		addUnits,
 		allocateLanes,
 		barRect,
+		isOnCanvas,
 		maxEndCol,
 		startOfUnit,
 		viewportColumns
@@ -207,6 +208,9 @@
 	let columns = $derived(viewportColumns(origin, canvasCols, zoom.unit));
 	let canvasWidth = $derived(canvasCols * zoom.colWidth);
 
+	// origin より前に終わる bar は見えないので、 lane を占有させず (行を高くせず) 描画もしない
+	let onCanvas = $derived(assignments.filter((a) => isOnCanvas(a, origin, zoom.unit)));
+
 	type RowLayout = {
 		resource: Resource;
 		rowTop: number;
@@ -219,7 +223,7 @@
 		let top = 0;
 		const result: RowLayout[] = [];
 		for (const r of resources) {
-			const rAssignments = assignments.filter((a) => a.resourceId === r.id);
+			const rAssignments = onCanvas.filter((a) => a.resourceId === r.id);
 			// #61: col 単位で重複判定 (year/month zoom で同 col に詰まる bar を別 lane に積む)
 			const { lanes, laneCount } = allocateLanes(rAssignments, {
 				origin,
@@ -315,7 +319,7 @@
 	};
 
 	let layouts: Layout[] = $derived(
-		assignments
+		onCanvas
 			.map((a) => {
 				const row = rowLayouts.find((r) => r.resource.id === a.resourceId);
 				if (!row) return null;
