@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { format } from 'date-fns';
+	import { format, type Locale } from 'date-fns';
 	import Bar from './Bar.svelte';
-	import type { Assignment, HeaderTier, Resource, TimelineLabels, ZoomLevel } from './types.js';
+	import type { Assignment, Resource, TimelineLabels, ZoomLevel } from './types.js';
 	import {
 		addUnits,
 		allocateLanes,
@@ -12,6 +12,7 @@
 		viewportColumns
 	} from './projection.js';
 	import { ZOOMS } from './zoom.js';
+	import { groupHeaderCells } from './header.js';
 	import { resolveLabels } from './labels.js';
 	import { computeRailWidth } from './rail-width.js';
 	import { createCanvasMeasurer } from './measure-text.js';
@@ -47,6 +48,11 @@
 		 * consumer (例: resource-planner) の locale state を渡して翻訳済を流せる。
 		 */
 		labels?: TimelineLabels;
+		/**
+		 * 見出しの月・曜日表記に使う date-fns の Locale (例: `ja` で「10月」「16(金)」)。
+		 * 未指定は英語。 関数の `fmt` には適用されない。
+		 */
+		locale?: Locale;
 		onMove?: (assignment: Assignment) => void;
 		/**
 		 * #68: edge ('start' | 'end') を optional positional argument で受け取る。
@@ -74,6 +80,7 @@
 		visibleCols,
 		bufferCols = 7,
 		labels,
+		locale,
 		onMove,
 		onResize,
 		onActivate
@@ -286,27 +293,10 @@
 		return { ...base, endDate: newEnd };
 	}
 
-	type HeaderGroup = { value: string; span: number; startIdx: number };
-
-	function groupHeaderCells(cells: Date[], tier: HeaderTier): HeaderGroup[] {
-		// #74: tier.fmt は string | ((Date) => string) の union (旧 fmt / format 2 field を統合)
-		const fn = typeof tier.fmt === 'function' ? tier.fmt : (d: Date) => format(d, tier.fmt as string);
-		return cells.reduce<HeaderGroup[]>((acc, col, i) => {
-			const value = fn(col);
-			const last = acc[acc.length - 1];
-			if (last && last.value === value) {
-				last.span += 1;
-			} else {
-				acc.push({ value, span: 1, startIdx: i });
-			}
-			return acc;
-		}, []);
-	}
-
 	let headerTiers = $derived(
 		zoom.headers.map((tier) => ({
 			tier,
-			groups: groupHeaderCells(columns, tier)
+			groups: groupHeaderCells(columns, tier, locale)
 		}))
 	);
 
