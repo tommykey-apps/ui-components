@@ -1,5 +1,11 @@
 # @tommykey-apps/ui-components
 
+## 1.0.1
+
+### Patch Changes
+
+- 276df17: ResourceTimeline: 表示開始日より前に終わる bar を lane 割り当てと描画から除外する。 見えない bar のせいで行が高くなっていた問題を修正。
+
 ## 1.0.0
 
 ### Major Changes
