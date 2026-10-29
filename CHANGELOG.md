@@ -1,5 +1,11 @@
 # @tommykey-apps/ui-components
 
+## 1.1.0
+
+### Minor Changes
+
+- 2e15c71: ResourceTimeline: `locale` prop (date-fns の Locale) を追加。 見出しの月・曜日表記を consumer の言語に合わせられる (例: `ja` で「10 月」「16(金)」)。 未指定は従来どおり英語。
+
 ## 1.0.1
 
 ### Patch Changes
