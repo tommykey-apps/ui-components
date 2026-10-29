@@ -99,3 +99,17 @@ describe('ResourceTimeline canvas 外 bar の除外', () => {
 		expect(source).toMatch(/onCanvas\s*\n?\s*\.map\(/);
 	});
 });
+
+/**
+ * 見出しの月・曜日表記を consumer の locale に合わせる (date-fns Locale)。
+ * 未指定なら従来どおり英語。
+ */
+describe('ResourceTimeline locale prop', () => {
+	it('Props に date-fns の Locale 型の locale を持つ', () => {
+		expect(source).toMatch(/locale\?:\s*Locale;/);
+	});
+
+	it('見出しのグループ化に locale を渡す', () => {
+		expect(source).toMatch(/groupHeaderCells\(columns,\s*tier,\s*locale\)/);
+	});
+});

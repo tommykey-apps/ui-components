@@ -1,5 +1,6 @@
 <script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
+	import { ja } from 'date-fns/locale';
 	import ResourceTimeline from '$lib/timeline/ResourceTimeline.svelte';
 	import { ZOOMS } from '$lib/timeline/zoom.js';
 	import { ASSIGNMENTS, RESOURCES, VIEWPORT_START } from './fixtures.js';
@@ -54,6 +55,11 @@
 	田中 太郎の a1 / a7 (5/04-5/15 で 2 段) は 5/16 開始では見えないので、 行は B社 改修の 1 段になる。
 -->
 <Story name="PastAssignments" args={{ zoom: ZOOMS.day, viewportStart: new Date(2026, 4, 16) }} />
+
+<!-- 見出しの月・曜日を date-fns の locale で日本語表記にする (「10月」「16(金)」)。 -->
+<Story name="JapaneseLocaleMonth" args={{ zoom: ZOOMS.month, locale: ja }} />
+
+<Story name="JapaneseLocaleDay" args={{ zoom: ZOOMS.day, locale: ja }} />
 
 <!--
 	#84: 長期間 bar (6 ヶ月) で **sticky label** が rail 右端に貼り付き、 viewport 内で
