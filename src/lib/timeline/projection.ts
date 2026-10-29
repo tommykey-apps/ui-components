@@ -108,6 +108,17 @@ export function barRect(assignment: Assignment, origin: Date, zoom: ZoomLevel): 
 	return { x: startCol * zoom.colWidth, width: span * zoom.colWidth };
 }
 
+/**
+ * bar が canvas (col 0 以降) に 1 col でも掛かるか。
+ * origin より前に終わる bar は描画されないので、 lane 割り当て (行の高さ) からも除外するために使う。
+ * 長さ 0 の bar は `barRect` と同じく 1 col として扱う。
+ */
+export function isOnCanvas(assignment: Assignment, origin: Date, unit: ZoomUnit): boolean {
+	const startCol = unitsBetween(origin, assignment.startDate, unit);
+	const endCol = endColExclusive(assignment.endDate, origin, unit);
+	return Math.max(endCol, startCol + 1) > 0;
+}
+
 export function viewportColumns(viewportStart: Date, count: number, unit: ZoomUnit): Date[] {
 	const start = startOfUnit(viewportStart, unit);
 	return Array.from({ length: count }, (_, i) => addUnits(start, i, unit));

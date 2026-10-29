@@ -84,3 +84,18 @@ describe('ResourceTimeline tooltip removal (regression: #84)', () => {
 		expect(source).not.toMatch(/<\/?Tooltip\.Provider/);
 	});
 });
+
+/**
+ * origin より前に終わる bar が lane を占有し、 見えないのに行が高くなっていた。
+ * canvas 外の bar は lane 割り当てと描画の両方から除外する。
+ */
+describe('ResourceTimeline canvas 外 bar の除外', () => {
+	it('canvas 内の assignment を isOnCanvas で絞る', () => {
+		expect(source).toMatch(/assignments\.filter\(\(a\)\s*=>\s*isOnCanvas\(a,\s*origin,\s*zoom\.unit\)\)/);
+	});
+
+	it('lane 割り当てと描画は全件ではなく onCanvas を使う', () => {
+		expect(source).toMatch(/onCanvas\.filter\(\(a\)\s*=>\s*a\.resourceId\s*===\s*r\.id\)/);
+		expect(source).toMatch(/onCanvas\s*\n?\s*\.map\(/);
+	});
+});
